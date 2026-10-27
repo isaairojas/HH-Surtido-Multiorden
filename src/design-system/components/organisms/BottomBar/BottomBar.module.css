@@ -1,0 +1,42 @@
+.bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  width: 100%;
+  height: 124px; /* figma: 3048:10092 */
+  border-radius: 30px 30px 0 0;
+  background: var(--color-blanco);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 5;
+}
+
+.actions {
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 30px 32px 37px;
+  filter: drop-shadow(0 -5px 2.5px rgba(0, 0, 0, 0.1)); /* figma: 3048:10092 (sin estilo) */
+}
+
+.actions > :global(.row) {
+  display: flex;
+  gap: 16px; /* figma: 3048:10093 */
+  align-items: center;
+  width: 100%;
+}
+
+.footer {
+  gap: 10px; /* figma: 3199:6476 */
+  align-items: flex-start;
+  padding: 32px;
+  filter: drop-shadow(0 -5px 2.5px rgba(0, 0, 0, 0.1));
+}
+
+.exit {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 32px;
+  filter: drop-shadow(0 -5px 2.5px rgba(0, 0, 0, 0.05)); /* figma: 3048:10126 (sin estilo) */
+}

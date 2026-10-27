@@ -1,0 +1,144 @@
+.screen {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blanco);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 24px 20px;
+  border-radius: 12px;
+  /* Estatus/Completado: es el verde de éxito del design-system y acompaña a la palomita. */
+  background: var(--color-estatus-completado);
+}
+
+/* Estado que solo se ve entrando por URL con la ronda a medias. */
+.heroPendiente {
+  background: var(--color-estatus-sin-iniciar);
+}
+
+.heroPendiente .heroTitulo {
+  color: var(--color-negro);
+}
+
+.heroTitulo {
+  color: var(--color-active-text);
+  font: var(--font-h2-headline);
+  line-height: normal;
+}
+
+.heroTexto {
+  width: 100%;
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  text-align: center;
+}
+
+.heroTexto b {
+  font-weight: 700;
+}
+
+.resumen {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.resumenCol {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 14px 8px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+}
+
+.resumenValor {
+  color: var(--color-negro);
+  font: var(--font-h1-headline);
+  line-height: normal;
+}
+
+.resumenEtiqueta {
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  text-align: center;
+}
+
+.pedidos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.pedidosTitulo {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+}
+
+.pedidosLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pedidoItem {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+}
+
+.pedidoInfo {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pedidoId {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+}
+
+.pedidoCliente {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.full {
+  width: 100%;
+}

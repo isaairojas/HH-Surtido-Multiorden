@@ -1,0 +1,95 @@
+/* BG BLUR MODALES — 3062:12639: en Figma está desplazado 1 px a la derecha y 2 px hacia abajo */
+.backdrop {
+  position: absolute;
+  left: 1px;
+  top: 2px;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.5); /* figma: 3062:12640 (sin estilo) */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 20;
+  animation: fade var(--duration-300) var(--easing-ease-out);
+}
+
+.wrapper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  animation: slide-up var(--duration-744) var(--easing-spring-quick);
+}
+
+.wrapperShadow {
+  filter: drop-shadow(0 -1px 4.5px rgba(0, 0, 0, 0.25)); /* figma: 3126:14406 — Modal shadow */
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 54px 32px 32px; /* figma: 3060:12583 */
+  border-radius: 30px 30px 0 0;
+  background: var(--color-blanco);
+}
+
+.singleShadow {
+  box-shadow: var(--shadow-modal-shadow);
+}
+
+.innerShadow {
+  filter: drop-shadow(0 4px 2px rgba(0, 0, 0, 0.25)); /* figma: 3126:14407 (sin estilo) */
+}
+
+.icon {
+  position: absolute;
+  left: calc(50% - 44px);
+  top: -43px;
+  width: 88px;
+  height: 88px;
+}
+
+.iconBox {
+  position: absolute;
+}
+
+.iconBox img {
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.title {
+  width: 100%;
+  color: var(--color-negro);
+  font: var(--font-s2-subtitle);
+  line-height: normal;
+  text-align: center;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

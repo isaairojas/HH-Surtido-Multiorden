@@ -1,0 +1,74 @@
+.header {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 232px; /* figma: 6640:1867 */
+  width: 100%;
+  height: 100px;
+  padding: 12px 16px;
+  overflow: hidden;
+  background: var(--color-primary-azul-300);
+}
+
+.watermark {
+  position: absolute;
+  left: 175px; /* figma: I6640:1867;6640:1847 */
+  top: 9.36px;
+  pointer-events: none;
+}
+
+.nav {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  min-width: 1px;
+}
+
+/* Arrow Back Container — I6640:1867;6640:1850 */
+.back {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+  width: 76.482px;
+}
+
+/* User Info Container — I6640:1867;6640:1855 */
+.user {
+  display: flex;
+  flex: 1 0 0;
+  gap: 15px;
+  align-items: center;
+  justify-content: center;
+  min-width: 1px;
+  height: 34.21px;
+  padding-right: 40px;
+}
+
+.userText {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  height: 100%;
+  color: var(--color-blanco);
+  font: 400 14px/normal var(--font-family-roboto);
+  white-space: nowrap;
+}
+
+.name {
+  font-weight: 700; /* figma: I6640:1867;6640:1860 */
+}
+
+.id {
+  font-weight: 400;
+}
+
+.menuSlot {
+  flex-shrink: 0;
+  width: 37px;
+  height: 37px;
+}

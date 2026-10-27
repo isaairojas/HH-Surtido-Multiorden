@@ -1,0 +1,259 @@
+/**
+ * Panel de códigos: se ancla a la izquierda del viewport, en el hueco al lado del app-frame.
+ * Solo aparece a partir de 1500 px, que es cuando caben los dos paneles y el marco sin encimarse
+ * (ver la reserva de espacio sobre #root en styles/global.css).
+ */
+.panel {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  bottom: 24px;
+  z-index: 100;
+  display: flex;
+  width: 440px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  overflow-y: auto;
+}
+
+@media (max-width: 1499px) {
+  .panel {
+    display: none;
+  }
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px 12px;
+  border-radius: 4px;
+  background: var(--color-primary-azul-300);
+  color: #fff;
+  font: 700 12px/normal var(--font-family-roboto);
+}
+
+.title {
+  margin: 0;
+  color: #000;
+  font: 700 22px/1.1 var(--font-family-roboto);
+}
+
+.subtitle {
+  color: #555;
+  font: 400 13px/1.4 var(--font-family-roboto);
+}
+
+.leyenda {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 0;
+  padding: 10px 12px 10px 26px;
+  border-radius: 6px;
+  background: #fef3c7;
+  box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.2);
+  color: #444;
+  font: 400 12px/1.4 var(--font-family-roboto);
+}
+
+/* ---- Fichas de código ---- */
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.fichaTop {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.codigoTitulo {
+  color: #000;
+  font: 700 17px/1 var(--font-family-roboto);
+  letter-spacing: 0.3px;
+}
+
+.marcas {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.total {
+  color: #111;
+  font: 700 12px/1 var(--font-family-roboto);
+}
+
+.tipoMisc,
+.tipoMulti {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font: 700 10px/1 var(--font-family-roboto);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.tipoMisc {
+  background: var(--color-var-revision-en-surtido-amarillo);
+  color: var(--color-negro);
+}
+
+.tipoMulti {
+  background: var(--color-primary-azul-0);
+  color: var(--color-primary-azul-300);
+}
+
+.descripcion {
+  color: #444;
+  font: 400 12.5px/1.3 var(--font-family-roboto);
+}
+
+/* ---- Botones de copiar ---- */
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.copiar {
+  padding: 5px 9px;
+  border-radius: 4px;
+  background: var(--color-primary-azul-0);
+  color: var(--color-primary-azul-300);
+  font: 700 11.5px/1 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+
+.copiar:hover {
+  background: var(--color-estatus-parcialidad);
+}
+
+.copiarEtiqueta {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.copiarEtiqueta:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.copiado {
+  background: var(--color-active) !important;
+  color: var(--color-active-text) !important;
+}
+
+/* ---- Desglose por pedido ---- */
+
+.presencias {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presencia {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font: 400 12px/1.3 var(--font-family-roboto);
+}
+
+.presenciaPedido {
+  position: relative;
+  color: #333;
+}
+
+.flecha {
+  position: absolute;
+  left: -11px;
+  color: var(--color-primary-azul-300);
+  font-weight: 700;
+}
+
+.presenciaChip {
+  padding: 1px 7px;
+  border-radius: 3px;
+  font: 700 11px/1.4 var(--font-family-roboto);
+  white-space: nowrap;
+}
+
+/* Mismos tokens de estado que los chips del handheld: pastel de fondo, texto negro. */
+.no-iniciado {
+  background: var(--color-estatus-sin-iniciar);
+  color: var(--color-negro);
+}
+
+.parcial {
+  background: var(--color-estatus-parcialidad);
+  color: var(--color-negro);
+}
+
+.completado {
+  background: var(--color-estatus-completado);
+  color: var(--color-negro);
+}
+
+.negado {
+  background: var(--color-estatus-negado);
+  color: var(--color-negro);
+}
+
+.destino {
+  margin-top: 2px;
+  color: #666;
+  font: 400 11.5px/1.3 var(--font-family-roboto);
+}
+
+.destino b {
+  color: var(--color-primary-azul-300);
+}
+
+/* ---- Pie: rechazos ---- */
+
+.pie {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  box-shadow: inset 0 0 0 1px rgba(153, 27, 27, 0.15);
+}
+
+.pieTitulo {
+  color: var(--color-secondary-rojo-300);
+  font: 700 12px/1 var(--font-family-roboto);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}

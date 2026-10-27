@@ -1,0 +1,60 @@
+.button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px; /* figma: 3199:6477 */
+  min-width: 1px;
+  border-radius: 5px; /* figma: 3199:6477 */
+  color: var(--color-blanco);
+  font: var(--font-b3-body); /* 18 px Regular */
+  line-height: normal;
+  text-align: center;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.button:not(:disabled):active {
+  filter: brightness(0.92);
+}
+
+.label {
+  line-height: normal;
+}
+
+.default {
+  background: var(--color-botones-default);
+}
+
+.error {
+  background: var(--color-botones-error);
+}
+
+.success {
+  background: var(--color-botones-success);
+}
+
+.disabled {
+  background: var(--color-botones-disabled);
+  cursor: default;
+}
+
+/* "Botón" contorno — 4582:23666 */
+.outline {
+  background: var(--color-blanco);
+  border: 1px solid var(--color-primary-azul-300);
+  color: var(--color-primary-azul-300);
+  padding: 8px 43px;
+}
+
+.asset {
+  background: transparent;
+}
+
+.assetImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

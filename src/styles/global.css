@@ -1,0 +1,83 @@
+@import '../design-system/tokens/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--color-blanco);
+  font-family: var(--font-family-roboto);
+  color: var(--color-negro);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+}
+
+/* Marco de la app: el frame de Figma mide 430×932. En el handheld ocupa todo el ancho disponible
+   hasta 430 px; en pantallas más anchas se centra (no existe diseño de escritorio en Figma). */
+.app-frame {
+  position: relative;
+  width: 100%;
+  max-width: var(--frame-width);
+  height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--color-blanco);
+}
+
+:root {
+  --frame-width: 430px; /* figma: frame base 430×932 */
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/*
+ * Los paneles de demo son `position: fixed`, así que no ocupan sitio en el flujo: se les
+ * reserva con padding en #root y el marco se centra con `margin: 0 auto` en lo que queda.
+ * Reservar con márgenes sobre `.app-frame` lo descuadraba, porque el hueco sobrante se iba
+ * todo a un lado en vez de repartirse.
+ */
+@media (min-width: 901px) {
+  #root {
+    padding-right: 404px; /* 380 del panel de escenarios + 24 de su margen */
+  }
+}
+
+@media (min-width: 1500px) {
+  #root {
+    padding-left: 464px; /* 440 de la hoja de códigos + 24 de su margen */
+  }
+}

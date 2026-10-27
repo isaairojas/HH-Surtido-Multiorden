@@ -1,0 +1,29 @@
+/* figma: 5170:21980 — 61.731 × 33 con thumb de 29 px */
+.switch {
+  position: relative;
+  width: 61.731px;
+  height: 33px;
+  border-radius: 33px;
+  background: var(--color-botones-disabled);
+  transition: background var(--duration-300) var(--easing-ease-out);
+  flex-shrink: 0;
+}
+
+.switch.on {
+  background: var(--color-primary-azul-300);
+}
+
+.thumb {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: var(--color-blanco);
+  transition: left var(--duration-300) var(--easing-ease-out);
+}
+
+.switch.on .thumb {
+  left: 30.731px; /* 61.731 - 2 - 29 */
+}

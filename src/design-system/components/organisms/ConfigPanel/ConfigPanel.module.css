@@ -1,0 +1,52 @@
+.panel {
+  position: absolute;
+  left: 0;
+  top: 67px; /* figma: 5917:1681 */
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: 22px;
+  padding-bottom: 45px;
+  border-radius: 30px 30px 0 0;
+  background: var(--color-blanco);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  filter: drop-shadow(0 0 2.5px rgba(0, 0, 0, 0.1)); /* figma: 5917:1681 (sin estilo) */
+  overflow: hidden;
+}
+
+/* "Contenido" 46 px de alto — 5917:1682 */
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: 46px;
+}
+
+.titleInner {
+  display: flex;
+  flex-direction: column;
+  gap: 23px;
+  align-items: center;
+  width: 100%;
+}
+
+.titleRow {
+  display: flex;
+  gap: 12px; /* figma: 5170:12988 */
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-negro);
+  font: var(--font-h2-headline);
+  line-height: normal;
+  text-align: center;
+  white-space: nowrap;
+}

@@ -1,0 +1,29 @@
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+docs/figma/cache/
+
+# Documentación interna: no se publica (el repositorio es público por GitHub Pages).
+# Describe servicios, banderas y endpoints de exodus-gtm-pwa. Vive solo en el equipo local.
+sdd/
+specs/
+docs/
+CLAUDE.md
+FIGMA_REPLICA.md
+Documentación-git/
+.claude/
+.specify/
+tsconfig.tsbuildinfo

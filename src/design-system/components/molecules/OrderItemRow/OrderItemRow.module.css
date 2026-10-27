@@ -1,0 +1,71 @@
+.row {
+  display: flex;
+  gap: 25px; /* figma: 3086:11541 */
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: 68px; /* figma: 3086:11541 */
+  padding: 10px 11px;
+  overflow: hidden;
+  background: var(--color-blanco);
+  color: var(--color-negro);
+  text-align: left;
+}
+
+.row:disabled {
+  cursor: default;
+}
+
+.content {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 1px;
+  height: 100%;
+  white-space: nowrap;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  line-height: normal;
+}
+
+.codigo {
+  font: var(--font-h2-headline);
+  line-height: normal;
+}
+
+.right {
+  display: flex;
+  gap: 10px; /* figma: 3086:12009 */
+  align-items: center;
+}
+
+.ubicacion {
+  display: flex;
+  gap: 5px; /* figma: 3086:11549 */
+  align-items: center;
+  justify-content: center;
+}
+
+.ubicacionItem {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* Text font/Label: Roboto 12/16, textCase TITLE */
+.ubicacionItem span {
+  font: var(--font-label);
+  text-transform: var(--text-transform-label);
+}
+
+.ubicacionItem b {
+  font: var(--font-b2-body);
+  line-height: normal;
+}

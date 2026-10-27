@@ -1,0 +1,76 @@
+/* figma: 3872:16599 — borde interior 1 px, radio 5, alto 50 */
+.input {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: 50px;
+  padding: 10px 10px 10px 13px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.39);
+  background: var(--color-blanco);
+  text-align: left;
+}
+
+.tall {
+  height: 75px; /* figma: 3872:16645 */
+  padding: 11px 10px 10px 13px;
+}
+
+.value {
+  flex: 1 0 0;
+  min-width: 1px;
+  max-height: 18px;
+  overflow: hidden;
+  color: var(--color-negro); /* figma: 7040:26083 — el valor del SELECT va en negro */
+  font: 400 15px/normal var(--font-family-roboto); /* figma: 3872:16603 (sin estilo) */
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tall .value {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  max-height: none;
+  height: 100%;
+  white-space: normal;
+}
+
+/* Label flotante — 3872:16604 */
+.label {
+  position: absolute;
+  left: 8px;
+  top: -8px;
+  display: flex;
+  align-items: center;
+  height: 14px;
+  padding: 0 5px;
+  background: var(--color-blanco);
+}
+
+.label span {
+  color: var(--color-negro);
+  font: 700 13.2px/normal var(--font-family-roboto); /* figma: 3872:16605 (sin estilo) */
+  white-space: nowrap;
+}
+
+/* SELECT PRUEBA — placeholder 13 px */
+.labelSelect span {
+  font-size: 13px; /* figma: 3872:16661 */
+}
+
+/* Dropdown ▼ (rotado 180°) */
+.dropdown {
+  flex-shrink: 0;
+  width: 13px;
+  height: 6px;
+  transform: rotate(180deg);
+}
+
+.dropdown img {
+  width: 100%;
+  height: 100%;
+}

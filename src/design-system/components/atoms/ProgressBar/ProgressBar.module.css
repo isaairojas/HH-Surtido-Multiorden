@@ -1,0 +1,19 @@
+.track {
+  position: relative;
+  width: 100%;
+  height: 12px; /* figma: 3095:16642 */
+  overflow: hidden;
+  border-radius: 35px; /* figma: 3095:16641 */
+  background: #e8ecf8; /* figma: 3095:16642 (sin estilo) */
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 12px;
+  border-radius: 35px;
+  /* figma: 3081:1940 — degradado lineal, paradas 14.904 % / 54.808 % / 100 % */
+  background: linear-gradient(90deg, var(--color-primary-azul-300) 14.904%, #3651a7 54.808%, var(--color-primary-azul-100) 100%);
+  transition: width var(--duration-300) var(--easing-ease-out);
+}

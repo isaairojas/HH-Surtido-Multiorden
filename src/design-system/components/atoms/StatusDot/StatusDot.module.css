@@ -1,0 +1,24 @@
+/* figma: 5234:23532 — 8×8 elipse rellena */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.conectada {
+  background: var(--color-botones-success);
+}
+
+.sin-conexion {
+  background: var(--color-botones-error);
+}
+
+.conectando {
+  background: var(--color-botones-amarillo);
+}
+
+.no-disponible {
+  background: var(--color-botones-disabled);
+}

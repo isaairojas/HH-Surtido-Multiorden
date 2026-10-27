@@ -1,0 +1,49 @@
+.container {
+  display: flex;
+  gap: 15px; /* figma: 3048:10192 */
+  align-items: center;
+  width: 100%;
+}
+
+.keyboard {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+}
+
+/* figma: Input 3048:10196 — rect blanco, trazo negro 1 px, radio 5, opacidad de grupo 0.8 */
+.field {
+  position: relative;
+  flex: 1 0 0;
+  min-width: 1px;
+  height: 50px;
+  opacity: 0.8;
+}
+
+.input {
+  width: 100%;
+  height: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--color-negro);
+  border-radius: 5px;
+  background: var(--color-blanco);
+  color: var(--color-negro);
+  font: var(--font-b3-body);
+  text-align: center;
+  outline: none;
+}
+
+.empty {
+  caret-color: transparent;
+}
+
+/* Trazado 2201 — cursor dibujado en el diseño: x = 151.7 de 301, y 11.3 → 39.3 */
+.caret {
+  position: absolute;
+  left: 50.4%;
+  top: 11.3px;
+  width: 1px;
+  height: 28px;
+  background: var(--color-negro);
+  pointer-events: none;
+}

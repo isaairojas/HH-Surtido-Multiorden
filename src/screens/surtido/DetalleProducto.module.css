@@ -1,0 +1,213 @@
+.screen {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blanco);
+}
+
+/* 3199:6380 */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+/* "Datos" — 3199:6381 */
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+}
+
+/* 3199:6393 */
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+}
+
+/* "Datos surtido" — 3199:6394 */
+.pair {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* ---- Desglose por pedido (FR-013) — sin respaldo en Figma ---- */
+
+.desglose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.desgloseHead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.desgloseTitulo {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+  margin: 0;
+}
+
+.varianteChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-var-revision-en-surtido-amarillo);
+  color: var(--color-negro);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.presencias {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presencia {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+}
+
+/* Pedido al que entra el próximo escaneo (FR-010).
+   Se marca con una barra lateral, no rellenando la tarjeta: el detalle ya trae mucho azul
+   de las etiquetas de LabeledField y de la foto enmarcada. */
+.presenciaActiva {
+  box-shadow: inset 3px 0 0 var(--color-primary-azul-300);
+}
+
+.presenciaInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 0 0;
+}
+
+.presenciaHead {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.presenciaPedido {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+}
+
+.presenciaOrden {
+  color: var(--color-inactive-text);
+  font: var(--font-b1-body);
+  line-height: normal;
+}
+
+.presenciaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-primary-azul-300);
+  color: var(--color-blanco);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.presenciaCliente {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presenciaMotivo {
+  margin: 0;
+  color: var(--color-secondary-rojo-300);
+  font: var(--font-b2-body);
+  line-height: normal;
+}
+
+/* "Cantidad surtida:" — 3199:6427.
+   A diferencia de Figma, la etiqueta nombra el pedido destino, así que va en dos líneas. */
+.cantidad {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.cantidadTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cantidadLabel {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.cantidadPedido {
+  color: var(--color-inactive-text);
+  font: var(--font-b2-body);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.consulta {
+  width: 100%;
+  margin: 0;
+  color: var(--color-inactive-text);
+  font: var(--font-b1-body);
+  line-height: normal;
+}
+
+/* Lector dentro del detalle (FR-015) — añadido propio, no está en Figma.
+   El ScanInput está pensado para la barra inferior blanca, así que aquí va sobre blanco:
+   un relleno azul lo sacaba del lenguaje del design-system. */
+.lector {
+  display: flex;
+  width: 100%;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.flex1 {
+  flex: 1 0 0;
+}

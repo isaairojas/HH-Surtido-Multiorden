@@ -1,0 +1,45 @@
+.header {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  height: 90px; /* figma: 3048:10139 */
+  padding: 13px 14px 16px 32px;
+  overflow: hidden;
+  background: var(--color-primary-azul-300);
+}
+
+.back {
+  display: flex;
+  gap: 16px; /* figma: 3048:10140 */
+  align-items: center;
+  padding-top: 3px;
+}
+
+.backLabel {
+  color: var(--color-blanco);
+  font: 700 24px/normal var(--font-family-roboto); /* figma: 3048:10144 (sin estilo, 24 px) */
+  white-space: nowrap;
+}
+
+.watermark {
+  position: absolute;
+  left: 173px; /* figma: 3048:10145 */
+  top: 9.36px;
+  pointer-events: none;
+}
+
+.menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 37px; /* figma: 3048:10147 */
+  height: 37px;
+  border-radius: 18.5px;
+  background: var(--color-blanco);
+}

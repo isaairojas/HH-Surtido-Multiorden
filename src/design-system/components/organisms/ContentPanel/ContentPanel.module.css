@@ -1,0 +1,81 @@
+.panel {
+  position: absolute;
+  left: 0;
+  top: 60px; /* figma: 3048:10150 */
+  display: flex;
+  flex-direction: column;
+  gap: 21px; /* figma: 3048:10150 */
+  width: 100%;
+  padding: 22px 32px 45px;
+  border-radius: 30px 30px 0 0;
+  background: var(--color-blanco);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  filter: drop-shadow(0 0 2.5px rgba(0, 0, 0, 0.1)); /* figma: 3048:10150 (sin estilo) */
+}
+
+/* "Contenido" 46 px de alto, justificado al centro */
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: 46px;
+}
+
+.titleInner {
+  display: flex;
+  flex-direction: column;
+  gap: 23px; /* figma: 3048:10152 */
+  align-items: center;
+  width: 100%;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-negro);
+  font: var(--font-h2-headline);
+  line-height: normal;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Contenido scrollable con el título fijo (prop `scroll`).
+   Añadido para el surtido multi-orden: ver nota en ContentPanel.tsx. */
+.scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 21px; /* mismo gap que el panel */
+  /* 16 px más ancho que el contenedor, compensados con el margen negativo de abajo. */
+  width: calc(100% + 16px);
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /*
+   * La barra de scroll es de superposición: se dibuja encima del contenido y recortaba el
+   * borde derecho de los campos. El bloque se ensancha 16 px hacia el relleno derecho del
+   * panel (32 px) y se le da ese mismo relleno, así la barra cae en el margen y el contenido
+   * conserva su ancho y su alineación con el título.
+   */
+  margin-right: -16px;
+  padding-right: 16px;
+  align-self: stretch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gris) transparent;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--color-secondary-gris);
+}
+
+.scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

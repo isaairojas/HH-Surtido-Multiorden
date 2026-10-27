@@ -1,0 +1,43 @@
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  width: 75px; /* figma: 3086:11545 */
+  padding: 3px 10px; /* figma: 3086:11545 */
+  border-radius: 5px; /* figma: 3086:11545 */
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.chip b {
+  font-weight: 700;
+}
+
+.centered {
+  justify-content: center;
+  gap: 10px; /* figma: 3086:11599 */
+}
+
+.no-iniciado {
+  background: var(--color-estatus-sin-iniciar);
+}
+
+.parcial {
+  background: var(--color-estatus-parcialidad);
+}
+
+.completado {
+  background: var(--color-estatus-completado);
+}
+
+.negado {
+  background: var(--color-estatus-negado);
+}
+
+/* "Botones/Chip negado" — 4582:23627 */
+.negado-promocion {
+  background: var(--color-botones-chip-negado);
+}

@@ -1,0 +1,127 @@
+/* Posiciones en % tomadas de la instancia 3085:11286 (verde) y 4582:24274 (rojo), caja de 416 × 106 */
+.toast {
+  position: relative;
+  width: 416px;
+  height: 106px;
+  color: var(--color-blanco);
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: #242c32; /* figma: 192:16701 (sin estilo) */
+  box-shadow: 0 0 7.5px 0 rgba(0, 0, 0, 0.25); /* figma: 192:16701 (sin estilo) */
+}
+
+.text {
+  position: absolute;
+  left: 14.18%;
+  top: calc(50% - 0.5px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(-50%);
+  line-height: normal;
+}
+
+.title {
+  width: 100%;
+  font: var(--font-s2-subtitle);
+  line-height: normal;
+}
+
+/* Roboto Thin 14 px (sin estilo de texto) */
+.message {
+  width: 100%;
+  font: 100 14px/normal var(--font-family-roboto);
+}
+
+.bar {
+  position: absolute;
+  bottom: 0;
+  top: 95.28%;
+  border-bottom-left-radius: 20px;
+  box-shadow: 0 0 7.5px 0 rgba(0, 0, 0, 0.25);
+  transition: right var(--duration-3000) var(--easing-ease-out); /* figma: SMART_ANIMATE 3000 ms EASE_OUT */
+}
+
+/* Toast=Fin — 192:16691: inset 95.28% 97.6% 0 0.24% */
+.toast.fin .bar {
+  right: 97.6%;
+}
+
+.close {
+  position: absolute;
+  display: block;
+  padding: 0;
+}
+
+.close img {
+  width: 100%;
+  height: 100%;
+}
+
+.divider {
+  position: absolute;
+  right: 12.73%;
+  left: 87.27%;
+}
+
+.divider img {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.5px;
+  width: 1px;
+  height: 100%;
+}
+
+.icon {
+  position: absolute;
+}
+
+/* ---- Verde: 3085:11286 */
+.success .text {
+  right: 17.07%;
+}
+.success .bar {
+  left: 0.24%;
+  right: 2.16%;
+  background: var(--color-botones-success);
+}
+.success .close {
+  inset: 43.4% 4.81% 44.34% 92.07%;
+}
+.success .divider {
+  top: 18.87%;
+  bottom: 19.81%;
+}
+.success .icon {
+  inset: 37.74% 89.83% 38.4% 4.13%;
+  width: calc(100% - 89.83% - 4.13%);
+  height: calc(100% - 37.74% - 38.4%);
+}
+
+/* ---- Rojo: 4582:24274 */
+.error .text {
+  right: 16.35%;
+  top: calc(50% - 4.5px);
+}
+.error .bar {
+  left: 0.48%;
+  right: 2.4%;
+  background: var(--color-botones-error);
+}
+.error .close {
+  inset: 44.34% 4.81% 43.4% 92.07%;
+}
+.error .divider {
+  top: 15.09%;
+  bottom: 23.58%;
+}
+.error .icon {
+  inset: 38.03% 89.72% 37.97% 4.16%;
+  width: calc(100% - 89.72% - 4.16%);
+  height: calc(100% - 38.03% - 37.97%);
+}

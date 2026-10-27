@@ -1,0 +1,31 @@
+.stepper {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  min-width: 1px;
+}
+
+.side {
+  flex-shrink: 0;
+  height: 43px;
+}
+
+.side:disabled {
+  cursor: default;
+}
+
+.value {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 1px;
+  height: 43px; /* figma: 3199:6432 */
+  padding: 12px 11px;
+  background: var(--color-blanco);
+  box-shadow: inset 0 0 0 1px var(--color-primary-azul-300);
+  color: #343434; /* figma: 3199:6433 (sin estilo) */
+  font: var(--font-b1-body);
+  line-height: normal;
+  white-space: nowrap;
+}

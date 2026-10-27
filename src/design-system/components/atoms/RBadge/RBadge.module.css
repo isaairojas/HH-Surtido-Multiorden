@@ -1,0 +1,22 @@
+/* figma: 3137:15180 — grupo con desplazamiento interno de 2 px */
+.badge {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.circle {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+}
+
+.letter {
+  position: absolute;
+  left: 8px; /* 2 + 6 — figma: 3137:15183 */
+  top: 3px; /* 2 + 1 — figma: 3137:15183 */
+  color: var(--color-blanco);
+  font: var(--font-b2-body);
+  line-height: normal;
+}

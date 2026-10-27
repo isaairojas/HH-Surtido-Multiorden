@@ -1,0 +1,154 @@
+/**
+ * Panel de escenarios: se ancla a la derecha del viewport, en el hueco que queda al lado del
+ * app-frame de 430 px. En pantallas estrechas (< 900 px) se oculta para no cubrir el handheld.
+ */
+.panel {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  overflow-y: auto;
+  z-index: 100;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    display: none;
+  }
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px 12px;
+  border-radius: 4px;
+  background: #000;
+  color: #fff;
+  font: 700 12px/normal var(--font-family-roboto);
+}
+
+.title {
+  margin: 0;
+  color: #000;
+  font: 700 22px/1.1 var(--font-family-roboto);
+}
+
+.subtitle {
+  color: #555;
+  font: 400 13px/1.4 var(--font-family-roboto);
+}
+
+.grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grupoTitulo {
+  margin: 0;
+  padding-bottom: 4px;
+  color: #2d5cfe;
+  font: 700 12px/1 var(--font-family-roboto);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-bottom: 1px solid rgba(45, 92, 254, 0.15);
+}
+
+.grupoNota {
+  margin: 0;
+  color: #5b6472;
+  font: 400 12px/1.45 var(--font-family-roboto);
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  background: #f7f7f7;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: background 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.item:hover {
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 1px rgba(45, 92, 254, 0.35);
+}
+
+.itemActivo {
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px #2d5cfe;
+}
+
+.itemStep {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2d5cfe;
+  color: #fff;
+  font: 700 11px/1 var(--font-family-roboto);
+}
+
+.itemBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.itemTitulo {
+  color: #000;
+  font: 700 13px/1.2 var(--font-family-roboto);
+}
+
+.itemDescripcion {
+  color: #444;
+  font: 400 12px/1.4 var(--font-family-roboto);
+}
+
+.reglas {
+  list-style: disc;
+  padding-left: 16px;
+  margin: 4px 0 0;
+  color: #555;
+  font: 400 11px/1.4 var(--font-family-roboto);
+}
+
+.reglas li {
+  margin-top: 2px;
+}

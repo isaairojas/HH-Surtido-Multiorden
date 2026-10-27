@@ -1,0 +1,28 @@
+.overlay {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 416px;
+  height: 166px; /* figma: 3085:11302 */
+  transform: translateX(-50%);
+  z-index: 50;
+  pointer-events: none;
+  animation: move-in var(--duration-300) var(--easing-ease-out);
+}
+
+.slot {
+  position: absolute;
+  left: 0;
+  top: 30px; /* figma: 3085:11286 */
+  pointer-events: auto;
+}
+
+/* MOVE_IN con dirección BOTTOM: el overlay entra desplazándose hacia abajo */
+@keyframes move-in {
+  from {
+    transform: translate(-50%, -100%);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}

@@ -1,0 +1,34 @@
+.divider {
+  position: relative;
+  width: 100%;
+  height: 0;
+  flex-shrink: 0;
+}
+
+.divider::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+/* Trazado 38 — trazo centrado de 1.5 px */
+.title::after {
+  top: -0.75px;
+  height: 1.5px;
+  background: var(--color-divider);
+}
+
+/* Trazado 2102 — trazo centrado de 1 px, color suelto #E4E4E4 */
+.modal::after {
+  top: -0.5px;
+  height: 1px;
+  background: #e4e4e4; /* figma: 3060:12587 (sin estilo) */
+}
+
+/* Line 2 — trazo de 2 px por encima de la línea */
+.list::after {
+  top: -2px;
+  height: 2px;
+  background: var(--color-divider);
+}

@@ -1,0 +1,13 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="66" height="66" viewBox="0 0 66 66" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Indicador" clip-path="url(#clip0_0_4)">
+<circle id="Fondo" cx="33" cy="33" r="33" fill="#1B3892" fill-opacity="0.1"/>
+<g id="refresh-cw">
+<path id="Vector" d="M21.75 33C21.75 30.0163 22.9353 27.1548 25.045 25.045C27.1548 22.9353 30.0163 21.75 33 21.75C36.1451 21.7618 39.1638 22.989 41.425 25.175L44.25 28M38 28H44.25V21.75M44.25 33C44.25 35.9837 43.0647 38.8452 40.955 40.955C38.8452 43.0647 35.9837 44.25 33 44.25C29.8549 44.2382 26.8362 43.011 24.575 40.825L21.75 38M21.75 44.25V38H28" stroke="#1B3892" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_4">
+<rect width="66" height="66" fill="white"/>
+</clipPath>
+</defs>
+</svg>
