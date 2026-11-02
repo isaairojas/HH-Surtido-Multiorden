@@ -79,3 +79,12 @@
 .scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Handheld angosto (≤ 420 px, p. ej. Zebra a 360 px): márgenes laterales de 16 px como Revision-HH-v2,
+   que ya se probó en sucursal. En el marco de 430 px se conservan las medidas de Figma. */
+@media (max-width: 420px) {
+  .panel {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

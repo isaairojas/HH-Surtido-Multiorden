@@ -65,7 +65,7 @@ const TOAST_CODIGO_DISTINTO = {
 export function DetalleProducto() {
   const { codigo = '' } = useParams();
   const navigate = useNavigate();
-  const { ronda, dispatch, mostrarToast } = useStore();
+  const { ronda, dispatch, mostrarToast, setUltimoEscaneo } = useStore();
   const [negando, setNegando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [cambio, setCambio] = useState<{ desde: string; hacia: string; ordenHacia: number } | null>(null);
@@ -105,6 +105,7 @@ export function DetalleProducto() {
     if (!partidaDestino || !pedidoDestino) return;
     const rechazo = evaluarCantidadAbsoluta(partidaDestino, n);
     if (rechazo) return rechazar(rechazo);
+    setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
     aplicar({ type: 'fijarSurtido', pedidoId: pedidoDestino.id, codigo, cantidad: n });
   };
 
@@ -113,6 +114,7 @@ export function DetalleProducto() {
     const ev = evaluarSurtido(ronda.ronda, codigo, cantidad);
     if (!ev.ok) return rechazar(ev.rechazo);
     sonar('ok');
+    if (pedidoDestino) setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
     aplicar({ type: 'surtirPorCodigo', codigo, cantidad });
   };
 

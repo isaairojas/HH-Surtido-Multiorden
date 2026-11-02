@@ -17,6 +17,12 @@
   cursor: default;
 }
 
+/* Último producto escaneado — `.articulo-highlight` de Revision-HH-v2, con el azul claro del design-system */
+.marcado {
+  background: var(--color-primary-azul-0);
+  transition: background-color 0.15s ease;
+}
+
 /* Miniatura sin borde ni fondo (D47 de la referencia) */
 .foto {
   display: flex;

@@ -16,6 +16,8 @@ import styles from './ProductoRondaRow.module.css';
 
 type Props = {
   producto: ProductoVista;
+  /** Último producto escaneado: fondo azul claro, como el resaltado de Revision-HH-v2. */
+  marcado?: boolean;
   onClick?: () => void;
 };
 
@@ -29,7 +31,7 @@ const claseTag = (p: Presencia) =>
         ? styles.tagParcial
         : '';
 
-export function ProductoRondaRow({ producto: v, onClick }: Props) {
+export function ProductoRondaRow({ producto: v, marcado, onClick }: Props) {
   const status = statusProducto(v);
   const enVariosPedidos = v.presencias.length > 1;
   const clientesUnicos = new Set(v.presencias.map((p) => p.cliente.id));
@@ -37,7 +39,14 @@ export function ProductoRondaRow({ producto: v, onClick }: Props) {
   const negadas = v.presencias.filter((p) => p.motivoNegacion);
 
   return (
-    <button type="button" className={styles.row} onClick={onClick} disabled={!onClick}>
+    <button
+      type="button"
+      className={`${styles.row} ${marcado ? styles.marcado : ''}`}
+      data-codigo={v.codigo}
+      aria-current={marcado ? 'true' : undefined}
+      onClick={onClick}
+      disabled={!onClick}
+    >
       <div className={styles.foto}>
         <img src={v.imagen} alt="" />
       </div>

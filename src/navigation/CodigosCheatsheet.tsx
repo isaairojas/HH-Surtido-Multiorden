@@ -10,7 +10,8 @@
  */
 import { useState } from 'react';
 import { etiqueta } from '../domain/codigos';
-import { partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
+import { CONFIG_MULTIORDEN_DEFAULT } from '../domain/configMultiorden';
+import { ordenarPorFamilia, partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
 import { useStore } from '../store/AppStore';
 import { letraPedido } from '../screens/surtido/Contenedores';
 import styles from './CodigosCheatsheet.module.css';
@@ -49,7 +50,9 @@ export function CodigosCheatsheet() {
   const { ronda } = useStore();
   const [copiado, setCopiado] = useState<string | null>(null);
 
-  const productos = productosVista(ronda.ronda);
+  // Mismo orden que la lista de surtido.
+  const vista = productosVista(ronda.ronda);
+  const productos = CONFIG_MULTIORDEN_DEFAULT.agruparPorFamilia ? ordenarPorFamilia(vista) : vista;
 
   const copiar = async (texto: string, marca: string) => {
     if (!(await alPortapapeles(texto))) return;
@@ -172,7 +175,7 @@ export function CodigosCheatsheet() {
           <button
             type="button"
             className={`${styles.copiar} ${styles.copiarEtiqueta} ${copiado === 'exceso' ? styles.copiado : ''}`}
-            onClick={() => copiar(etiqueta(productos[0]?.codigo ?? '0486600', 999), 'exceso')}
+            onClick={() => copiar(etiqueta(productos[0]?.codigo ?? '1394010', 999), 'exceso')}
             title="Etiqueta con una cantidad mayor a la solicitada: se rechaza entera"
           >
             {copiado === 'exceso' ? '¡Copiado!' : 'Cantidad excesiva · ×999'}

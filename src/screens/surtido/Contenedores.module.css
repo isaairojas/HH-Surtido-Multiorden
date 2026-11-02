@@ -101,3 +101,19 @@
   font: var(--font-b2-body);
   line-height: normal;
 }
+
+/* Handheld angosto (≤ 420 px, p. ej. Zebra a 360 px): tarjetas más juntas para que quepan las tres. */
+@media (max-width: 420px) {
+  .contenedores {
+    gap: 6px;
+  }
+
+  .contenedor {
+    gap: 4px;
+    padding: 10px 4px;
+  }
+
+  .datos {
+    font-size: 11px;
+  }
+}

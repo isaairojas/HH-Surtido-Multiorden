@@ -35,6 +35,7 @@ import {
   partidaEn,
   pedidoActualIdx,
   pedidoCompleto,
+  ordenarPorFamilia,
   productosVista,
   promocionesPendientes,
   proximaPartidaPara,
@@ -43,6 +44,7 @@ import {
   type Pedido,
   type PromocionPendiente,
 } from '../../domain/ronda';
+import { CONFIG_MULTIORDEN_DEFAULT } from '../../domain/configMultiorden';
 import { useStore } from '../../store/AppStore';
 import { ProductoRondaRow } from './ProductoRondaRow';
 import { ContenedoresResumen } from './Contenedores';
@@ -52,7 +54,7 @@ import styles from './SurtidoRonda.module.css';
 
 export function SurtidoRonda() {
   const navigate = useNavigate();
-  const { ronda, dispatch, mostrarToast } = useStore();
+  const { ronda, dispatch, mostrarToast, ultimoEscaneo, setUltimoEscaneo } = useStore();
   const scanRef = useRef<ScanInputHandle>(null);
   const [capturando, setCapturando] = useState<string | null>(null);
   const [transicion, setTransicion] = useState<Pedido | null>(null);
@@ -68,9 +70,24 @@ export function SurtidoRonda() {
   /** El flujo de promoción se abre solo una vez; después, con "Finalizar surtido". */
   const promoAbierta = useRef(false);
 
-  const productos = productosVista(ronda.ronda);
+  // Agrupación por familia (Bandera_AgrupacionFamiliaEnHH): las familias quedan juntas y en orden
+  // alfabético, sin rótulo; todas las filas se separan con la misma línea.
+  const vista = productosVista(ronda.ronda);
+  const productos = CONFIG_MULTIORDEN_DEFAULT.agruparPorFamilia ? ordenarPorFamilia(vista) : vista;
   const c = conteosRonda(ronda.ronda);
   const idxActual = pedidoActualIdx(ronda.ronda);
+  /**
+   * Pedido que se marca como "en surtido": el que recibió el último escaneo mientras siga abierto;
+   * si ya se completó (o aún no se escanea nada), el siguiente pendiente.
+   */
+  const idxUltimo = ultimoEscaneo ? ronda.ronda.pedidos.findIndex((p) => p.id === ultimoEscaneo.pedidoId) : -1;
+  const idxMarcado = idxUltimo >= 0 && !pedidoCompleto(ronda.ronda.pedidos[idxUltimo]) ? idxUltimo : idxActual;
+
+  // El último producto escaneado se lleva a la vista para que el surtidor lo vea marcado.
+  useEffect(() => {
+    if (!ultimoEscaneo) return;
+    document.querySelector(`[data-codigo="${ultimoEscaneo.codigo}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [ultimoEscaneo]);
 
   const completa = rondaCompleta(ronda.ronda);
   const totalPedidos = ronda.ronda.pedidos.length;
@@ -119,6 +136,9 @@ export function SurtidoRonda() {
     const ev = evaluarSurtido(ronda.ronda, codigo, cantidad);
     if (!ev.ok) return rechazar(ev.rechazo);
     sonar('ok');
+    // El pedido que recibe las piezas es el destino antes de aplicar el surtido (FR-010).
+    const destino = proximaPartidaPara(ronda.ronda, codigo);
+    if (destino) setUltimoEscaneo({ codigo, pedidoId: ronda.ronda.pedidos[destino.pedidoIdx].id });
     const accion = { type: 'surtirPorCodigo', codigo, cantidad } as const;
     const c = cambioDePedido(ronda.ronda, rondaReducer(ronda, accion).ronda, codigo);
     dispatch(accion);
@@ -180,6 +200,7 @@ export function SurtidoRonda() {
       <ContentPanel title="Surtido de órdenes" bottom={124} scroll>
         <OrderProgress
           titulo="Avance de la ronda"
+          etiquetas={false}
           completado={c.completado}
           negado={c.negado}
           parcial={c.parcial}
@@ -187,13 +208,17 @@ export function SurtidoRonda() {
         />
 
         {/* Avance individual por pedido; el resaltado es el pedido que recibe el próximo escaneo. */}
-        <ContenedoresResumen pedidos={ronda.ronda.pedidos} actualIdx={idxActual} />
+        <ContenedoresResumen pedidos={ronda.ronda.pedidos} actualIdx={idxMarcado} />
 
         <div className={styles.list}>
           {productos.map((v, idx) => (
             <div key={v.codigo} className={styles.itemContainer}>
               {idx > 0 && <Divider variant="list" />}
-              <ProductoRondaRow producto={v} onClick={() => navigate(`/detalle/${v.codigo}`)} />
+              <ProductoRondaRow
+                producto={v}
+                marcado={ultimoEscaneo?.codigo === v.codigo}
+                onClick={() => navigate(`/detalle/${v.codigo}`)}
+              />
             </div>
           ))}
         </div>

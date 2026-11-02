@@ -41,26 +41,31 @@ const ESCENARIOS: Escenario[] = [
     descripcion: 'Nadie ha escaneado nada; todos los productos pendientes.',
     ruta: '/surtido',
     reglas: [
+      'Los productos van agrupados por familia, en orden alfabético (Bomba gasolina, Cinta, Foco…).',
       'Cada card desglosa el avance por contenedor (A 0/2 · B 0/2).',
       'Las tarjetas superiores muestran el avance de cada pedido; la azul recibe el próximo escaneo.',
       'Al escanear se surte el pedido pendiente con menor orden que todavía lo necesite.',
-      'Etiqueta de 18 dígitos surte directo; código de 7 abre la captura de cantidad.',
+      'Todos son misceláneos (la cantidad se captura a mano) salvo la bomba 0607006, que se escanea.',
+      'En la bomba, la etiqueta de 18 dígitos surte directo; el código de 7 abre la captura de cantidad.',
     ],
   },
   {
     id: 'con-avance',
     titulo: 'Surtido — con avance',
-    descripcion: '0486600 completo y 1365800 parcial en el primer pedido.',
+    descripcion: '1394010 completo y 0607006 parcial en el primer pedido.',
     ruta: '/surtido',
-    reglas: ['Las filas cambian de color según su estado (completado / parcial / pendiente).'],
+    reglas: [
+      'Las filas cambian de color según su estado (completado / parcial / pendiente).',
+      'El último producto escaneado (0607006) y su pedido (A) quedan marcados en azul.',
+    ],
   },
   {
     id: 'cierra-pedido',
     titulo: 'A una pieza de cerrar el pedido',
-    descripcion: 'Al 100001 solo le falta 1 pieza de 2389475.',
+    descripcion: 'Al 100001 solo le falta 1 pieza de 6200401.',
     ruta: '/surtido',
     reglas: [
-      'Escanea 2389475 (1 pieza) y aparece el aviso "Pedido completado".',
+      'Escanea 6200401 (1 pieza) y aparece el aviso "Pedido completado".',
       'El aviso dice con qué pedido sigue la ronda.',
     ],
   },
@@ -74,7 +79,7 @@ const ESCENARIOS: Escenario[] = [
   {
     id: 'negado',
     titulo: 'Partida negada',
-    descripcion: '0512300 negado por "Sin existencia" en el pedido 100002.',
+    descripcion: '6200404 negado por "Sin existencia" en el pedido 100002.',
     ruta: '/surtido',
     reglas: [
       'La fila muestra el motivo; el conteo "Negado" de la tarjeta sube.',
@@ -84,27 +89,27 @@ const ESCENARIOS: Escenario[] = [
   {
     id: 'cierra-ronda',
     titulo: 'A una pieza de cerrar la ronda',
-    descripcion: 'Solo falta 1 pieza de 3310500 en el último pedido.',
+    descripcion: 'Solo falta 1 pieza de 2010000 en el último pedido.',
     ruta: '/surtido',
     reglas: ['Al completarla, la app salta a la pantalla final "Ronda terminada".'],
   },
   {
     id: 'cambio-pedido',
     titulo: 'Cambio de pedido de un código',
-    descripcion: 'Al 100001 le falta 1 filtro 0486600, que también piden el 100002 y el 100003.',
+    descripcion: 'Al 100001 le falta 1 cinta 1394010, que también piden el 100002 y el 100003.',
     ruta: '/surtido',
     reglas: [
-      'Escanea 0486600 (1 pieza): aparece "Cambio de pedido" con el contenedor destino en rojo.',
+      'Escanea 1394010 (1 pieza): aparece "Cambio de pedido" con el contenedor destino en rojo.',
       'En el detalle, el pedido que se surte va en rojo y los otros dos en gris.',
     ],
   },
   {
     id: 'promocion',
     titulo: 'Promoción incompleta',
-    descripcion: '"Kit afinación" (0486600 + 2389475): la bujía se negó en el 100002.',
+    descripcion: '"Kit mantenimiento" (1394010 + 6200401): el limpiador se negó en el 100002.',
     ruta: '/surtido',
     reglas: [
-      'Escanea 3310500 (1 pieza) y, en vez de cerrar la ronda, sale "Finalizar surtido".',
+      'Escanea 2010000 (1 pieza) y, en vez de cerrar la ronda, sale "Finalizar surtido".',
       '✕ no retira nada; "Finalizar surtido" lo vuelve a abrir.',
       '"Eliminar productos" + escanear un código de la promoción la niega solo en el 100002.',
     ],

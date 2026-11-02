@@ -3,9 +3,9 @@
  * SDD multiorden-armado-ronda (sdd/changes/multiorden-armado-ronda) · Requirement: Parámetros del
  * multi-orden por sucursal.
  *
- * Solo declarados: el simulador todavía no los lee. La ronda la arma el back-end y la HH la recibe
- * armada. Los valores por defecto son la configuración inicial acordada el 2026-10-26 y no cambian el
- * comportamiento actual del simulador.
+ * Solo declarados, salvo `agruparPorFamilia`, que la pantalla de surtido sí lee. La ronda la arma el
+ * back-end y la HH la recibe armada. Los valores por defecto son la configuración inicial acordada el
+ * 2026-10-26.
  */
 
 /** Servicio de entrega. SDD multiorden-armado-ronda · Requirement: Mismo servicio. */
@@ -39,7 +39,8 @@ export const CONFIG_MULTIORDEN_DEFAULT: ConfigMultiorden = {
   validarCodigosCompartidos: true,
   maxPartidasPorRonda: 15,
   tiposPedidoMultiorden: { pedido: true, corporativo: true, traspaso: false },
-  agruparPorFamilia: false,
+  // Activa en la demo desde el 2026-11-02: es regla del proyecto (SDD surtido-listado-imagen-familia).
+  agruparPorFamilia: true,
 };
 
 /*

@@ -43,3 +43,11 @@
   border-radius: 18.5px;
   background: var(--color-blanco);
 }
+
+/* Handheld angosto (≤ 420 px, p. ej. Zebra a 360 px): márgenes laterales de 16 px como Revision-HH-v2,
+   que ya se probó en sucursal. En el marco de 430 px se conservan las medidas de Figma. */
+@media (max-width: 420px) {
+  .header {
+    padding-left: 16px;
+  }
+}

@@ -92,3 +92,9 @@
   left: 4.42px; /* figma: 1324:7077 */
   top: 4.42px;
 }
+
+/* Sin etiquetas: solo ícono y número (ronda multi-orden, mockup 15:1437) */
+.colCompacta {
+  height: auto;
+  justify-content: center;
+}

@@ -57,7 +57,11 @@ export type PartidaPedido = {
   imagen: string;
   /** Promoción AxB a la que pertenece la partida en su pedido. null = sin promoción. */
   promocion: Promocion | null;
-  // SDD surtido-listado-imagen-familia · Agrupación por familia: falta `familia` (tampoco viene en IAssortmentProduct).
+  /**
+   * Familia del catálogo (`apFamilia`: Producto → apFamiliaGrupo → apDivisionFamilia → apFamilia).
+   * SDD surtido-listado-imagen-familia · Agrupación por familia. En el real no viene en IAssortmentProduct.
+   */
+  familia: string;
 };
 
 /*
@@ -247,6 +251,7 @@ export type ProductoVista = {
   ubicacion: Ubicacion;
   existencia: number;
   miscelaneo: boolean;
+  familia: string;
   surtidoTotal: number;
   solicitadoTotal: number;
   presencias: Presencia[];
@@ -293,6 +298,7 @@ export function productosVista(r: Ronda): ProductoVista[] {
         ubicacion: part.ubicacion,
         existencia: part.existencia,
         miscelaneo: part.miscelaneo,
+        familia: part.familia,
         surtidoTotal: part.surtido,
         solicitadoTotal: part.solicitado,
         presencias: [presencia],
@@ -300,6 +306,18 @@ export function productosVista(r: Ronda): ProductoVista[] {
     }
   });
   return [...porCodigo.values()];
+}
+
+/**
+ * Agrupación por familia (SDD surtido-listado-imagen-familia, regla del 2026-10-30): las familias van
+ * en orden alfabético y, dentro de cada una, los códigos conservan el orden que traían (secuencia de
+ * picking). Solo reordena la vista: no cambia a qué pedido entra cada escaneo.
+ */
+export function ordenarPorFamilia(v: ProductoVista[]): ProductoVista[] {
+  return v
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => a.p.familia.localeCompare(b.p.familia, 'es', { sensitivity: 'base' }) || a.i - b.i)
+    .map((x) => x.p);
 }
 
 export function productoVista(r: Ronda, codigo: string): ProductoVista | undefined {

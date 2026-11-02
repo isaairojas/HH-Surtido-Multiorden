@@ -1,7 +1,7 @@
 /**
  * Toma de tarea para el surtido multi-orden.
- * Muestra la ronda asignada con sus N pedidos en el orden del algoritmo.
- * Pedidos del mismo cliente llevan badge "Mismo cliente".
+ * Muestra la ronda asignada con sus N pedidos en el orden del algoritmo, uno por contenedor
+ * (bloque "Pedidos" de la propuesta A). "Mismo cliente" se marca en el Detalle de la ronda.
  *
  * SDD multiorden-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
  * (próximos a vencer) lo da el procesador de ordenamiento; la HH no reordena.
@@ -19,10 +19,9 @@ import { BottomBar } from '@ds/components/organisms/BottomBar/BottomBar';
 import { Button } from '@ds/components/atoms/Button/Button';
 import { LabeledField } from '@ds/components/molecules/LabeledField/LabeledField';
 import { InfoBlock } from '@ds/components/molecules/InfoBlock/InfoBlock';
-import { clientesRepetidos } from '../../domain/ronda';
 import { EMPLEADO, TAREA } from '../../mocks/ronda';
 import { useStore } from '../../store/AppStore';
-import { ContenedorLetra } from '../surtido/Contenedores';
+import { letraPedido } from '../surtido/Contenedores';
 import styles from './AsignacionTareas.module.css';
 
 export function AsignacionTareas() {
@@ -30,9 +29,6 @@ export function AsignacionTareas() {
   const { ronda } = useStore();
   const pedidos = ronda.ronda.pedidos;
   const total = pedidos.length;
-
-  // Marca "Mismo cliente" por grupos: cada pedido lo lleva si comparte cliente con otro de la ronda.
-  const compartido = clientesRepetidos(pedidos);
 
   return (
     <div className={styles.screen}>
@@ -71,47 +67,14 @@ export function AsignacionTareas() {
             { label: 'Hora inicio:', value: TAREA.hora },
           ]}
         />
+        {/* Igual que la propuesta A: una fila por contenedor con su pedido. Cliente, piezas y "Mismo cliente"
+            se ven en el Detalle de la ronda, la pantalla siguiente. */}
         <InfoBlock
           title={TAREA.documentoLabel}
           icon={receiptIcon}
           iconSize={{ w: 13.482, h: 17.159 }}
-          rows={[{ value: ronda.ronda.id }]}
+          rows={pedidos.map((p, idx) => ({ label: `Contenedor ${letraPedido(idx)}`, value: p.id }))}
         />
-
-        <div className={styles.pedidos}>
-          <div className={styles.pedidosHeader}>
-            <img src={receiptIcon} alt="" width={13.482} height={17.159} />
-            <p>Pedidos de la ronda ({total})</p>
-          </div>
-          <ol className={styles.pedidosLista}>
-            {pedidos.map((p, idx) => {
-              const esMismoCliente = compartido.has(p.cliente.id);
-              return (
-                <li key={p.id} className={styles.pedidoItem}>
-                  <div className={styles.pedidoOrden}>
-                    <ContenedorLetra idx={idx} />
-                    <span className={styles.pedidoTotal}>
-                      {idx + 1} de {total}
-                    </span>
-                  </div>
-                  <div className={styles.pedidoBody}>
-                    <div className={styles.pedidoHead}>
-                      <span className={styles.pedidoId}>Pedido {p.id}</span>
-                      {esMismoCliente && <span className={styles.chipMismoCliente}>Mismo cliente</span>}
-                    </div>
-                    <p className={styles.pedidoCliente} title={p.cliente.nombre}>
-                      {p.cliente.nombre}
-                    </p>
-                    <p className={styles.pedidoResumen}>
-                      {p.partidas.length} {p.partidas.length === 1 ? 'producto' : 'productos'} ·{' '}
-                      {p.partidas.reduce((n, x) => n + x.solicitado, 0)} piezas
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
       </ContentPanel>
       <BottomBar>
         <div className="row">

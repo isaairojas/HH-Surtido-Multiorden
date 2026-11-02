@@ -22,8 +22,8 @@ const completar = (p: PartidaPedido): PartidaPedido => ({ ...p, surtido: p.solic
 function conAvanceMedio(): RondaState {
   return retocar(estadoInicial(), {
     0: (p) => {
-      if (p.codigo === '0486600') return completar(p);
-      if (p.codigo === '1365800') return { ...p, surtido: 3 };
+      if (p.codigo === '1394010') return completar(p);
+      if (p.codigo === '0607006') return { ...p, surtido: 1 };
       return p;
     },
   });
@@ -36,14 +36,14 @@ function primerPedidoCompleto(): RondaState {
 /** El pedido 100001 solo necesita la última partida: el próximo escaneo lo cierra. */
 function primerPedidoAlFilo(): RondaState {
   return retocar(estadoInicial(), {
-    0: (p) => (p.codigo === '2389475' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
+    0: (p) => (p.codigo === '6200401' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
   });
 }
 
-/** Ronda con una partida negada: el código 0512300 no tiene existencia suficiente. */
+/** Ronda con una partida negada: el código 6200404 no tiene existencia suficiente. */
 function conNegado(): RondaState {
   return retocar(estadoInicial(), {
-    1: (p) => (p.codigo === '0512300' ? { ...p, motivoNegacion: 'Sin existencia' } : p),
+    1: (p) => (p.codigo === '6200404' ? { ...p, motivoNegacion: 'Sin existencia' } : p),
   });
 }
 
@@ -52,26 +52,26 @@ function rondaAlFilo(): RondaState {
   return retocar(estadoInicial(), {
     0: completar,
     1: completar,
-    2: (p) => (p.codigo === '3310500' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
+    2: (p) => (p.codigo === '2010000' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
   });
 }
 
-/** Al 100001 le falta 1 filtro 0486600: el próximo escaneo pasa el código al 100002. */
+/** Al 100001 le falta 1 cinta 1394010: el próximo escaneo pasa el código al 100002. */
 function cambioDePedido(): RondaState {
   return retocar(estadoInicial(), {
-    0: (p) => (p.codigo === '0486600' ? { ...p, surtido: p.solicitado - 1 } : p),
+    0: (p) => (p.codigo === '1394010' ? { ...p, surtido: p.solicitado - 1 } : p),
   });
 }
 
 /**
- * Bujía 2389475 negada en el 100002 (sin existencia tras surtir el 100001): su "Kit afinación"
- * queda incompleto con el filtro ya surtido. Falta 1 pieza de 3310500 para resolver la ronda.
+ * Limpiador 6200401 negado en el 100002 (sin existencia tras surtir el 100001): su "Kit mantenimiento"
+ * queda incompleto con la cinta ya surtido. Falta 1 pieza de 2010000 para resolver la ronda.
  */
 function promocionIncompleta(): RondaState {
   return retocar(estadoInicial(), {
     0: completar,
-    1: (p) => (p.codigo === '2389475' ? { ...p, motivoNegacion: 'Sin existencia' } : completar(p)),
-    2: (p) => (p.codigo === '3310500' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
+    1: (p) => (p.codigo === '6200401' ? { ...p, motivoNegacion: 'Sin existencia' } : completar(p)),
+    2: (p) => (p.codigo === '2010000' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
   });
 }
 
@@ -86,7 +86,7 @@ export const ESCENARIOS: Record<string, Semilla> = {
   inicial: { etapa: 'surtido' },
 
   /** Surtido con avance intermedio sobre el primer pedido. */
-  'con-avance': { etapa: 'surtido', ronda: conAvanceMedio() },
+  'con-avance': { etapa: 'surtido', ronda: conAvanceMedio(), ultimoEscaneo: { codigo: '0607006', pedidoId: '100001' } },
 
   /** Una pieza antes de cerrar el primer pedido: dispara el aviso de transición. */
   'cierra-pedido': { etapa: 'surtido', ronda: primerPedidoAlFilo() },
@@ -100,7 +100,7 @@ export const ESCENARIOS: Record<string, Semilla> = {
   /** Una pieza antes de cerrar la ronda entera. */
   'cierra-ronda': { etapa: 'surtido', ronda: rondaAlFilo() },
 
-  /** Una pieza antes de que el filtro pase del 100001 al 100002: aviso de cambio de pedido. */
+  /** Una pieza antes de que la cinta pase del 100001 al 100002: aviso de cambio de pedido. */
   'cambio-pedido': { etapa: 'surtido', ronda: cambioDePedido() },
 
   /** Promoción AxB incompleta en el 100002: bloquea el cierre de la ronda. */

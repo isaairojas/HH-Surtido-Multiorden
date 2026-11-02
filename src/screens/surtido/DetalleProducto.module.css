@@ -100,12 +100,11 @@
   border-radius: 5px;
 }
 
-/* Pedido al que entra el próximo escaneo (FR-010): indicador rojo (sesión 2026-10-27,
-   "se ve hasta con rojo el contenedor donde está trabajando"). */
+/* Pedido al que entra el próximo escaneo (FR-010). Era rojo (sesión 2026-10-27); desde el
+   2026-11-02 va en azul claro, el mismo resaltado del producto escaneado en la lista. */
 .presenciaActiva {
-  box-shadow:
-    inset 4px 0 0 var(--color-secondary-rojo-300),
-    inset 0 0 0 1px var(--color-secondary-rojo-300);
+  background: var(--color-primary-azul-0);
+  box-shadow: inset 4px 0 0 var(--color-primary-azul-300);
   padding-left: 12px;
 }
 
@@ -135,7 +134,8 @@
 
 .presenciaHead {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 2px 8px;
   align-items: center;
 }
 
@@ -149,7 +149,7 @@
   align-items: center;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--color-secondary-rojo-300);
+  background: var(--color-primary-azul-300);
   color: var(--color-blanco);
   font-size: 10px;
   font-weight: 700;

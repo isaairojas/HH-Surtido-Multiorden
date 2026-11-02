@@ -22,6 +22,8 @@ type Props = {
   pendientes: number;
   /** "Avance del pedido" en Figma; el surtido multi-orden lo rotula "Avance de la ronda" (FR-012). */
   titulo?: string;
+  /** false: solo íconos y números, sin "Completado", "Negado"… (mockup 15:1437 de la ronda). */
+  etiquetas?: boolean;
 };
 
 export function OrderProgress(p: Props) {
@@ -37,8 +39,9 @@ export function OrderProgress(p: Props) {
         </div>
       </div>
       <div className={styles.body}>
-        <Col label="Completado" value={p.completado} icon={<img src={completado} alt="" width={28.846} height={29.026} />} />
+        <Col etiqueta={p.etiquetas} label="Completado" value={p.completado} icon={<img src={completado} alt="" width={28.846} height={29.026} />} />
         <Col
+          etiqueta={p.etiquetas}
           label="Negado"
           value={p.negado}
           icon={
@@ -48,17 +51,17 @@ export function OrderProgress(p: Props) {
             </span>
           }
         />
-        <Col label="Parcial" value={p.parcial} icon={<img src={parcial} alt="" width={28.846} height={28.846} />} />
-        <Col label="Pendientes" value={p.pendientes} icon={<img src={pendiente} alt="" width={28.846} height={28.846} />} />
+        <Col etiqueta={p.etiquetas} label="Parcial" value={p.parcial} icon={<img src={parcial} alt="" width={28.846} height={28.846} />} />
+        <Col etiqueta={p.etiquetas} label="Pendientes" value={p.pendientes} icon={<img src={pendiente} alt="" width={28.846} height={28.846} />} />
       </div>
     </div>
   );
 }
 
-function Col({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
+function Col({ label, value, icon, etiqueta = true }: { label: string; value: number; icon: ReactNode; etiqueta?: boolean }) {
   return (
-    <div className={styles.col}>
-      <span className={styles.colLabel}>{label}</span>
+    <div className={`${styles.col} ${etiqueta ? '' : styles.colCompacta}`} aria-label={etiqueta ? undefined : `${label}: ${value}`}>
+      {etiqueta && <span className={styles.colLabel}>{label}</span>}
       <div className={styles.colValue}>
         {icon}
         <b>{value}</b>
