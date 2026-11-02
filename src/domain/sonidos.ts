@@ -41,18 +41,33 @@ const desbloquear = () => {
 };
 for (const ev of ['touchstart', 'touchend', 'keydown', 'click']) document.addEventListener(ev, desbloquear, { passive: true });
 
-export function sonar(clave: Clave) {
-  if (!preferencias.alertas) return;
-  const c = contexto();
+function respaldo(clave: Clave) {
+  new Audio(urls[clave]).play().catch(() => undefined);
+}
+
+function reproducir(c: AudioContext, clave: Clave) {
   const buf = buffers[clave];
-  if (c && buf) {
+  if (!buf) return respaldo(clave);
+  try {
     const src = c.createBufferSource();
     src.buffer = buf;
     src.connect(c.destination);
     src.start(0);
+  } catch {
+    respaldo(clave);
+  }
+}
+
+export function sonar(clave: Clave) {
+  if (!preferencias.alertas) return;
+  const c = contexto();
+  if (!c) return respaldo(clave);
+  // En Zebra el contexto puede seguir suspendido tras el gesto: hay que esperar resume() antes de sonar.
+  if (c.state === 'suspended') {
+    c.resume().then(() => reproducir(c, clave)).catch(() => respaldo(clave));
     return;
   }
-  new Audio(urls[clave]).play().catch(() => undefined);
+  reproducir(c, clave);
 }
 
 /** Dictado (equivalente web de SAPI en el legado). Los textos exactos siguen PENDIENTES (docs/tecnico/referencias.md §2). */

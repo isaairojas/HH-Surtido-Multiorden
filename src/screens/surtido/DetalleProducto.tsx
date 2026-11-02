@@ -16,6 +16,11 @@
  * Negar (SDD multiorden-surtido-listado · Negar producto desde el detalle): niega el pedido en
  * proceso y todos los posteriores, retirando lo surtido; el modal lista los pedidos afectados.
  *
+ * Indicadores del desglose (SDD multiorden-surtido-listado · Desglose por pedido en el detalle,
+ * sesión del 2026-10-27): el pedido que se está surtiendo lleva barra y etiqueta rojas; los demás
+ * van en gris, como inhabilitados. El chip conserva el color de su estatus (completo en verde).
+ * Cuando el surtido pasa el código a otro pedido se avisa con `CambioPedidoModal`.
+ *
  * El aviso de pedido completado y el cierre de la ronda no se resuelven aquí: los
  * detecta `SurtidoRonda` al volver a la lista, mirando el estado del store.
  */
@@ -35,16 +40,20 @@ import { leerCodigo } from '../../domain/codigos';
 import { sonar } from '../../domain/sonidos';
 import {
   AVISOS,
+  cambioDePedido,
   evaluarCantidadAbsoluta,
   evaluarSurtido,
   partidaEn,
   partidasANegar,
   productoVista,
   proximaPartidaPara,
+  rondaReducer,
   statusDeEstado,
+  type RondaAction,
 } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
-import { CantidadModal, NegarProductoModal } from './overlays/SurtidoModals';
+import { CambioPedidoModal, CantidadModal, NegarProductoModal } from './overlays/SurtidoModals';
+import { ContenedorLetra } from './Contenedores';
 import styles from './DetalleProducto.module.css';
 
 const TOAST_CODIGO_DISTINTO = {
@@ -59,6 +68,7 @@ export function DetalleProducto() {
   const { ronda, dispatch, mostrarToast } = useStore();
   const [negando, setNegando] = useState(false);
   const [capturando, setCapturando] = useState(false);
+  const [cambio, setCambio] = useState<{ desde: string; hacia: string; ordenHacia: number } | null>(null);
 
   const vista = productoVista(ronda.ronda, codigo);
   const destino = proximaPartidaPara(ronda.ronda, codigo);
@@ -75,6 +85,16 @@ export function DetalleProducto() {
 
   const volver = () => navigate('/surtido');
 
+  /**
+   * Despacha y avisa si las siguientes piezas del código ya van a otro pedido. Aquí se avisa
+   * aunque el pedido se haya cerrado: el aviso de pedido completado sale hasta volver a la lista.
+   */
+  const aplicar = (accion: RondaAction) => {
+    const c = cambioDePedido(ronda.ronda, rondaReducer(ronda, accion).ronda, codigo);
+    dispatch(accion);
+    if (c) setCambio({ desde: c.desde.id, hacia: c.hacia.id, ordenHacia: c.ordenHacia });
+  };
+
   const rechazar = (rechazo: keyof typeof AVISOS) => {
     sonar('error');
     mostrarToast({ kind: 'error', ...AVISOS[rechazo] });
@@ -85,7 +105,7 @@ export function DetalleProducto() {
     if (!partidaDestino || !pedidoDestino) return;
     const rechazo = evaluarCantidadAbsoluta(partidaDestino, n);
     if (rechazo) return rechazar(rechazo);
-    dispatch({ type: 'fijarSurtido', pedidoId: pedidoDestino.id, codigo, cantidad: n });
+    aplicar({ type: 'fijarSurtido', pedidoId: pedidoDestino.id, codigo, cantidad: n });
   };
 
   /** Suma una cantidad al pedido destino con las validaciones de Revision-HH-v2. */
@@ -93,7 +113,7 @@ export function DetalleProducto() {
     const ev = evaluarSurtido(ronda.ronda, codigo, cantidad);
     if (!ev.ok) return rechazar(ev.rechazo);
     sonar('ok');
-    dispatch({ type: 'surtirPorCodigo', codigo, cantidad });
+    aplicar({ type: 'surtirPorCodigo', codigo, cantidad });
   };
 
   /** Lector dentro del detalle: solo acepta el código que se está viendo (FR-015). */
@@ -118,12 +138,8 @@ export function DetalleProducto() {
   };
 
   const [planta, pasillo, torre, nivel] = vista.ubicacion;
+  // Sin partida pendiente el detalle es de solo consulta (edge case de la spec): no hay stepper.
   const bloqueado = partidaDestino === null;
-  /**
-   * Sin partida pendiente el detalle es de solo consulta (edge case de la spec): el stepper
-   * enseña lo que se surtió en la ronda y queda inerte, en vez de mostrar un 0 engañoso.
-   */
-  const cantidadStepper = partidaDestino ? partidaDestino.surtido : vista.surtidoTotal;
 
   return (
     <div className={styles.screen}>
@@ -143,62 +159,79 @@ export function DetalleProducto() {
               </div>
               <div className={styles.pair}>
                 <LabeledField label="Existencia" value={vista.existencia} valueBold />
-                <LabeledField label="Solicitado" value={vista.solicitadoTotal} />
+                <LabeledField
+                  label={
+                    <>
+                      Solicitado
+                      <br />
+                      ronda
+                    </>
+                  }
+                  value={vista.solicitadoTotal}
+                />
               </div>
             </div>
           </div>
 
-          {/* Desglose por pedido — FR-013 */}
-          <div className={styles.desglose}>
+          {/* Surtido por pedido — FR-013. Interfaz de 41:2429 (propuesta A): una fila por contenedor.
+              Solo la fila del pedido que se está surtiendo lleva stepper; las demás quedan en gris. */}
+          <section className={styles.desglose} aria-labelledby="surtido-por-pedido">
             <div className={styles.desgloseHead}>
-              <p className={styles.desgloseTitulo}>Desglose por pedido ({vista.presencias.length})</p>
+              <h3 id="surtido-por-pedido" className={styles.desgloseTitulo}>
+                Surtido por pedido
+              </h3>
               {vista.miscelaneo && <span className={styles.varianteChip}>Misceláneo</span>}
             </div>
-            <Divider variant="modal" />
             <ul className={styles.presencias}>
-              {vista.presencias.map((p) => {
+              {vista.presencias.map((p, i) => {
                 const esDestino = pedidoDestino?.id === p.pedidoId;
+                // Sin destino (código resuelto) ninguna fila se apaga: el detalle es de consulta.
+                const inactiva = pedidoDestino !== null && !esDestino;
                 return (
-                  <li key={p.pedidoId} className={`${styles.presencia} ${esDestino ? styles.presenciaActiva : ''}`}>
-                    <div className={styles.presenciaInfo}>
-                      <div className={styles.presenciaHead}>
-                        <span className={styles.presenciaPedido}>Pedido {p.pedidoId}</span>
-                        <span className={styles.presenciaOrden}>
-                          {p.ordenPedido + 1}/{ronda.ronda.pedidos.length}
-                        </span>
-                        {esDestino && <span className={styles.presenciaBadge}>Surtiendo</span>}
+                  <li key={p.pedidoId} className={styles.presenciaItem}>
+                    {i > 0 && <Divider variant="list" />}
+                    <div
+                      className={[styles.presencia, esDestino ? styles.presenciaActiva : '', inactiva ? styles.presenciaInactiva : ''].join(' ')}
+                      aria-current={esDestino ? 'step' : undefined}
+                    >
+                      <span className={styles.presenciaLetra}>
+                        <ContenedorLetra idx={p.ordenPedido} variante={p.estado === 'completo' ? 'completo' : 'normal'} />
+                      </span>
+                      <div className={styles.presenciaInfo}>
+                        <div className={styles.presenciaHead}>
+                          <span className={styles.presenciaPedido}>#{p.pedidoId}</span>
+                          {esDestino && <span className={styles.presenciaBadge}>Surtiendo</span>}
+                        </div>
+                        <span className={styles.presenciaSolicitado}>Solicitado {p.solicitado}</span>
+                        {p.motivoNegacion && <p className={styles.presenciaMotivo}>{p.motivoNegacion}</p>}
                       </div>
-                      <p className={styles.presenciaCliente} title={p.cliente.nombre}>
-                        {p.cliente.nombre}
-                      </p>
-                      {p.motivoNegacion && <p className={styles.presenciaMotivo}>Negado: {p.motivoNegacion}</p>}
+                      <div className={styles.presenciaAccion}>
+                        {p.estado === 'negado' ? (
+                          <Chip status="negado" />
+                        ) : esDestino && partidaDestino ? (
+                          <Stepper
+                            value={partidaDestino.surtido}
+                            min={0}
+                            max={Math.min(partidaDestino.solicitado, partidaDestino.existencia)}
+                            onChange={cambiarCantidad}
+                          />
+                        ) : (
+                          <Chip status={statusDeEstado(p.estado)} value={p.surtido} total={p.solicitado} />
+                        )}
+                      </div>
                     </div>
-                    <Chip status={statusDeEstado(p.estado)} value={p.surtido} total={p.solicitado} />
                   </li>
                 );
               })}
             </ul>
-          </div>
-
-          <div className={styles.cantidad}>
-            <div className={styles.cantidadTexto}>
-              <p className={styles.cantidadLabel}>Cantidad surtida:</p>
-              {pedidoDestino && <span className={styles.cantidadPedido}>Pedido {pedidoDestino.id}</span>}
-            </div>
-            <Stepper
-              value={cantidadStepper}
-              min={bloqueado ? cantidadStepper : 0}
-              max={partidaDestino ? Math.min(partidaDestino.solicitado, partidaDestino.existencia) : cantidadStepper}
-              onChange={cambiarCantidad}
-            />
-          </div>
+          </section>
 
           {bloqueado && <p className={styles.consulta}>Este producto ya no tiene partidas pendientes en la ronda.</p>}
 
           {/* Misceláneo: sin campo de lector (FR-016) */}
           {!vista.miscelaneo && !bloqueado && (
             <div className={styles.lector}>
-              <ScanInput onScan={onScan} autoFocus={!negando && !capturando} />
+              <ScanInput onScan={onScan} autoFocus={!negando && !capturando && !cambio} />
             </div>
           )}
         </div>
@@ -222,6 +255,14 @@ export function DetalleProducto() {
           afectadas={aNegar}
           onCancel={() => setNegando(false)}
           onConfirm={negar}
+        />
+      )}
+
+      {cambio && (
+        <CambioPedidoModal
+          codigo={codigo}
+          {...cambio}
+          onEntendido={() => setCambio(null)}
         />
       )}
 

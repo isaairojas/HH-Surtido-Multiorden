@@ -14,7 +14,8 @@ import pendiente from '@assets/icons/estado-pendiente.svg';
 import styles from './OrderProgress.module.css';
 
 type Props = {
-  pedido: string;
+  /** Sin pedido (ronda multi-orden), el encabezado solo lleva el título, centrado (mockup 15:1437). */
+  pedido?: string;
   completado: number;
   negado: number;
   parcial: number;
@@ -27,12 +28,12 @@ export function OrderProgress(p: Props) {
   return (
     <div className={styles.progress}>
       <div className={styles.header}>
-        <div className={styles.headerInner}>
+        <div className={`${styles.headerInner} ${p.pedido ? '' : styles.headerCentrado}`}>
           <div className={styles.headerLeft}>
             <img src={avance} alt="" width={11.161} height={13.708} />
             <span>{p.titulo ?? 'Avance del pedido'}</span>
           </div>
-          <b>Pedido {p.pedido}</b>
+          {p.pedido && <b>Pedido {p.pedido}</b>}
         </div>
       </div>
       <div className={styles.body}>

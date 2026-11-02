@@ -22,6 +22,7 @@ import { InfoBlock } from '@ds/components/molecules/InfoBlock/InfoBlock';
 import { clientesRepetidos } from '../../domain/ronda';
 import { EMPLEADO, TAREA } from '../../mocks/ronda';
 import { useStore } from '../../store/AppStore';
+import { ContenedorLetra } from '../surtido/Contenedores';
 import styles from './AsignacionTareas.module.css';
 
 export function AsignacionTareas() {
@@ -88,8 +89,10 @@ export function AsignacionTareas() {
               return (
                 <li key={p.id} className={styles.pedidoItem}>
                   <div className={styles.pedidoOrden}>
-                    <span className={styles.pedidoNumero}>{idx + 1}</span>
-                    <span className={styles.pedidoTotal}>de {total}</span>
+                    <ContenedorLetra idx={idx} />
+                    <span className={styles.pedidoTotal}>
+                      {idx + 1} de {total}
+                    </span>
                   </div>
                   <div className={styles.pedidoBody}>
                     <div className={styles.pedidoHead}>
@@ -118,7 +121,7 @@ export function AsignacionTareas() {
             icon="check"
             label="Aceptar"
             className={styles.half}
-            onClick={() => navigate('/surtido')}
+            onClick={() => navigate('/ronda')}
           />
         </div>
       </BottomBar>

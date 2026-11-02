@@ -81,24 +81,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   min-width: 44px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--color-primario-oscuro, #0b2e75);
-  color: var(--color-blanco, #fff);
+  color: var(--color-inactive-text);
 }
 
-.pedidoNumero {
-  font: var(--font-h2-headline);
-  font-weight: 700;
-  font-size: 20px;
-  line-height: 1;
-}
-
+/* Letra del contenedor (propuesta A) en lugar del número del pedido */
 .pedidoTotal {
   font-size: 10px;
-  opacity: 0.85;
-  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .pedidoBody {

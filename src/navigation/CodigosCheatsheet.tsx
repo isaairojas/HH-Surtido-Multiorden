@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { etiqueta } from '../domain/codigos';
 import { partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
 import { useStore } from '../store/AppStore';
+import { letraPedido } from '../screens/surtido/Contenedores';
 import styles from './CodigosCheatsheet.module.css';
 
 /** Código de 7 dígitos que no vive en la ronda, para probar el rechazo de FR-011. */
@@ -134,7 +135,7 @@ export function CodigosCheatsheet() {
                   <li key={p.pedidoId} className={styles.presencia}>
                     <span className={styles.presenciaPedido}>
                       {pedidoDestino?.id === p.pedidoId && <span className={styles.flecha}>▸</span>}
-                      Pedido {p.pedidoId}
+                      {letraPedido(p.ordenPedido)} · Pedido {p.pedidoId}
                     </span>
                     <span className={`${styles.presenciaChip} ${styles[statusDeEstado(p.estado)]}`}>
                       {p.motivoNegacion ? `Negado · ${p.motivoNegacion}` : `${p.surtido}/${p.solicitado}`}
@@ -146,7 +147,7 @@ export function CodigosCheatsheet() {
               <p className={styles.destino}>
                 {pedidoDestino ? (
                   <>
-                    Próximo escaneo → <b>pedido {pedidoDestino.id}</b> (le faltan {faltan})
+                    Próximo escaneo → <b>{letraPedido(destino!.pedidoIdx)} · pedido {pedidoDestino.id}</b> (le faltan {faltan})
                   </>
                 ) : (
                   <>Sin partidas pendientes: el escaneo se rechaza.</>

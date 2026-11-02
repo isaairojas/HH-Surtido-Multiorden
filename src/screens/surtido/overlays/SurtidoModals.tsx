@@ -24,6 +24,7 @@ import { ModalHeader, ModalIcon, ModalSheet } from '@ds/components/organisms/Mod
 import { Button } from '@ds/components/atoms/Button/Button';
 import { FloatingLabelInput } from '@ds/components/molecules/FloatingLabelInput/FloatingLabelInput';
 import { MOTIVOS_NEGACION } from '../../../domain/ronda';
+import { letraPedido } from '../Contenedores';
 import styles from './overlays.module.css';
 
 /* ---------- Ingresa la cantidad surtida en contenedor — 3236:16208 ---------- */
@@ -78,7 +79,7 @@ export function NegarProductoModal({
   codigo: string;
   descripcion: string;
   /** Pedido en proceso primero y luego los posteriores, en el orden de la ronda. */
-  afectadas: { pedidoId: string; surtido: number; solicitado: number }[];
+  afectadas: { pedidoId: string; pedidoIdx: number; surtido: number; solicitado: number }[];
   onCancel: () => void;
   onConfirm: (motivo: string) => void;
 }) {
@@ -130,7 +131,9 @@ export function NegarProductoModal({
           <ul className={styles.afectadas}>
             {afectadas.map((a) => (
               <li key={a.pedidoId} className={styles.afectada}>
-                <span>Pedido {a.pedidoId}</span>
+                <span>
+                  {letraPedido(a.pedidoIdx)} · Pedido {a.pedidoId}
+                </span>
                 <span>{a.surtido > 0 ? `${a.surtido} de ${a.solicitado} surtidas` : `${a.solicitado} sin surtir`}</span>
               </li>
             ))}
@@ -183,14 +186,56 @@ export function NegarProductoModal({
   );
 }
 
+/* ---------- Cambio de pedido de un código ----------
+   SDD multiorden-surtido-listado · Avisos de cambio de pedido. Sin nodo en Figma: lo pidieron en la
+   sesión del 2026-10-21 ("recuerda que esto va al siguiente contenedor"). El pedido destino va en
+   rojo, el mismo indicador que lo marca en el desglose del detalle. */
+export function CambioPedidoModal({
+  codigo,
+  desde,
+  hacia,
+  ordenHacia,
+  onEntendido,
+}: {
+  codigo: string;
+  desde: string;
+  hacia: string;
+  /** Índice del pedido destino en la ronda (0-based); da la letra del contenedor. */
+  ordenHacia: number;
+  onEntendido: () => void;
+}) {
+  return (
+    <ModalSheet icon={<ModalIcon src={iconoPregunta} inset="-2.84% -2.27% -0.56% -1.14%" />} gap={10} doubleShadow>
+      <div className={styles.col} style={{ gap: 18 }}>
+        <ModalHeader title="Cambio de pedido" gap={18} />
+        <p className={styles.text}>
+          El código <b>{codigo}</b> ya está completo en el pedido <b>{desde}</b>.
+        </p>
+        <div className={styles.cambio}>
+          <span className={styles.transicionEtiqueta}>Las siguientes piezas van al contenedor del</span>
+          <span className={styles.cambioPedido}>Pedido {hacia}</span>
+          <span className={styles.cambioOrden}>Contenedor {letraPedido(ordenHacia)}</span>
+        </div>
+        <p className={styles.text}>No mezcles la mercancía con la del pedido anterior.</p>
+        <Button variant="success" label="Entendido" className={styles.full} onClick={onEntendido} />
+      </div>
+    </ModalSheet>
+  );
+}
+
 /* ---------- Pedido completado, continuar con el siguiente (FR-019) ---------- */
 export function PedidoCompletadoModal({
   pedidoCompletado,
   siguientePedido,
   siguienteCliente,
+  ordenCompletado,
+  ordenSiguiente,
   onContinuar,
 }: {
   pedidoCompletado: string;
+  /** Índices en la ronda (0-based) para la letra del contenedor. */
+  ordenCompletado: number;
+  ordenSiguiente: number | null;
   /** null cuando era el último pedido pendiente de la ronda. */
   siguientePedido: string | null;
   siguienteCliente: string | null;
@@ -202,13 +247,15 @@ export function PedidoCompletadoModal({
         <ModalHeader title="Pedido completado" gap={18} />
 
         <p className={styles.text}>
-          Terminaste el pedido <b>{pedidoCompletado}</b>.
+          Terminaste el pedido <b>{pedidoCompletado}</b> (contenedor {letraPedido(ordenCompletado)}).
         </p>
 
         {siguientePedido ? (
           <div className={styles.transicion}>
             <span className={styles.transicionEtiqueta}>Continúa con</span>
-            <span className={styles.transicionPedido}>Pedido {siguientePedido}</span>
+            <span className={styles.transicionPedido}>
+              {ordenSiguiente !== null && `${letraPedido(ordenSiguiente)} · `}Pedido {siguientePedido}
+            </span>
             {siguienteCliente && <span className={styles.transicionCliente}>{siguienteCliente}</span>}
           </div>
         ) : (

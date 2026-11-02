@@ -38,10 +38,11 @@
 
 /* ---- Desglose por pedido (FR-013) — sin respaldo en Figma ---- */
 
+/* "Surtido por pedido" — 41:2429 de la referencia: título S2 y filas con divisor */
 .desglose {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
   width: 100%;
 }
 
@@ -54,10 +55,10 @@
 }
 
 .desgloseTitulo {
-  color: var(--color-negro);
-  font: var(--font-b2-body);
-  line-height: normal;
   margin: 0;
+  color: var(--color-negro);
+  font: var(--font-s2-subtitle);
+  line-height: normal;
 }
 
 .varianteChip {
@@ -77,55 +78,70 @@
 .presencias {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.presenciaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .presencia {
   display: flex;
   gap: 12px;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--color-inactive);
+  padding: 6px 8px;
+  border-radius: 5px;
 }
 
-/* Pedido al que entra el próximo escaneo (FR-010).
-   Se marca con una barra lateral, no rellenando la tarjeta: el detalle ya trae mucho azul
-   de las etiquetas de LabeledField y de la foto enmarcada. */
+/* Pedido al que entra el próximo escaneo (FR-010): indicador rojo (sesión 2026-10-27,
+   "se ve hasta con rojo el contenedor donde está trabajando"). */
 .presenciaActiva {
-  box-shadow: inset 3px 0 0 var(--color-primary-azul-300);
+  box-shadow:
+    inset 4px 0 0 var(--color-secondary-rojo-300),
+    inset 0 0 0 1px var(--color-secondary-rojo-300);
+  padding-left: 12px;
+}
+
+/* Pedidos que no se están surtiendo: en gris, como inhabilitados. El chip no se atenúa para
+   que el estatus siga legible (p. ej. "11 de 11" en verde). */
+.presenciaInactiva .presenciaLetra {
+  opacity: 0.5;
+}
+
+.presenciaInactiva .presenciaPedido,
+.presenciaInactiva .presenciaSolicitado {
+  color: var(--color-inactive-text);
+}
+
+.presenciaLetra {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .presenciaInfo {
   display: flex;
+  flex: 1 0 0;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1 0 0;
 }
 
 .presenciaHead {
   display: flex;
   gap: 8px;
-  align-items: baseline;
+  align-items: center;
 }
 
 .presenciaPedido {
   color: var(--color-negro);
-  font: var(--font-b2-body);
-  line-height: normal;
-}
-
-.presenciaOrden {
-  color: var(--color-inactive-text);
-  font: var(--font-b1-body);
-  line-height: normal;
+  font: 400 12px/normal var(--font-family-roboto);
 }
 
 .presenciaBadge {
@@ -133,7 +149,7 @@
   align-items: center;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--color-primary-azul-300);
+  background: var(--color-secondary-rojo-300);
   color: var(--color-blanco);
   font-size: 10px;
   font-weight: 700;
@@ -142,52 +158,27 @@
   white-space: nowrap;
 }
 
-.presenciaCliente {
+.presenciaSolicitado {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.presenciaMotivo {
   margin: 0;
   overflow: hidden;
-  color: var(--color-negro);
+  color: var(--color-secondary-rojo-300);
   font: var(--font-b1-body);
   line-height: normal;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.presenciaMotivo {
-  margin: 0;
-  color: var(--color-secondary-rojo-300);
-  font: var(--font-b2-body);
-  line-height: normal;
-}
-
-/* "Cantidad surtida:" — 3199:6427.
-   A diferencia de Figma, la etiqueta nombra el pedido destino, así que va en dos líneas. */
-.cantidad {
+.presenciaAccion {
   display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.cantidadTexto {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.cantidadLabel {
-  color: var(--color-negro);
-  font: var(--font-b2-body);
-  line-height: normal;
-  white-space: nowrap;
-}
-
-.cantidadPedido {
-  color: var(--color-inactive-text);
-  font: var(--font-b2-body);
-  line-height: normal;
-  white-space: nowrap;
+  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .consulta {

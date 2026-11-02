@@ -10,7 +10,7 @@ type Escenario = {
   id: string;
   titulo: string;
   descripcion: string;
-  ruta: '/tareas' | '/surtido';
+  ruta: '/tareas' | '/ronda' | '/surtido';
   reglas: string[];
 };
 
@@ -26,12 +26,23 @@ const ESCENARIOS: Escenario[] = [
     ],
   },
   {
+    id: 'detalle-ronda',
+    titulo: 'Detalle de la ronda',
+    descripcion: 'Pantalla previa al surtido: qué pedido va en cada contenedor.',
+    ruta: '/ronda',
+    reglas: [
+      'Un panel por contenedor (A, B, C) con folio, cliente, piezas y códigos.',
+      'Los pedidos del mismo cliente llevan "Mismo cliente".',
+    ],
+  },
+  {
     id: 'inicial',
     titulo: 'Surtido — ronda vacía',
     descripcion: 'Nadie ha escaneado nada; todos los productos pendientes.',
     ruta: '/surtido',
     reglas: [
-      'Códigos compartidos entre pedidos muestran el badge "En N pedidos".',
+      'Cada card desglosa el avance por contenedor (A 0/2 · B 0/2).',
+      'Las tarjetas superiores muestran el avance de cada pedido; la azul recibe el próximo escaneo.',
       'Al escanear se surte el pedido pendiente con menor orden que todavía lo necesite.',
       'Etiqueta de 18 dígitos surte directo; código de 7 abre la captura de cantidad.',
     ],
@@ -76,6 +87,27 @@ const ESCENARIOS: Escenario[] = [
     descripcion: 'Solo falta 1 pieza de 3310500 en el último pedido.',
     ruta: '/surtido',
     reglas: ['Al completarla, la app salta a la pantalla final "Ronda terminada".'],
+  },
+  {
+    id: 'cambio-pedido',
+    titulo: 'Cambio de pedido de un código',
+    descripcion: 'Al 100001 le falta 1 filtro 0486600, que también piden el 100002 y el 100003.',
+    ruta: '/surtido',
+    reglas: [
+      'Escanea 0486600 (1 pieza): aparece "Cambio de pedido" con el contenedor destino en rojo.',
+      'En el detalle, el pedido que se surte va en rojo y los otros dos en gris.',
+    ],
+  },
+  {
+    id: 'promocion',
+    titulo: 'Promoción incompleta',
+    descripcion: '"Kit afinación" (0486600 + 2389475): la bujía se negó en el 100002.',
+    ruta: '/surtido',
+    reglas: [
+      'Escanea 3310500 (1 pieza) y, en vez de cerrar la ronda, sale "Finalizar surtido".',
+      '✕ no retira nada; "Finalizar surtido" lo vuelve a abrir.',
+      '"Eliminar productos" + escanear un código de la promoción la niega solo en el 100002.',
+    ],
   },
 ];
 

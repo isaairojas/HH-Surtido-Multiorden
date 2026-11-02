@@ -33,7 +33,12 @@ export const ScanInput = forwardRef<ScanInputHandle, Props>(function ScanInput({
     const code = v.trim();
     if (!code) return;
     setValue('');
-    setManual(false);
+    if (manual) {
+      // Cierra el teclado del sistema en Android/Zebra y vuelve al modo lector (Revision-HH-v2).
+      setManual(false);
+      inputRef.current?.blur();
+      window.setTimeout(() => inputRef.current?.focus(), 50);
+    }
     onScan(code);
   };
 
@@ -69,6 +74,14 @@ export const ScanInput = forwardRef<ScanInputHandle, Props>(function ScanInput({
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit(value);
+          }}
+          onBlur={() => {
+            // Foco persistente: si nada más tomó el foco (toque accidental, re-render), el lector lo recupera.
+            if (!autoFocus) return;
+            window.setTimeout(() => {
+              const activo = document.activeElement;
+              if (!activo || activo === document.body) inputRef.current?.focus();
+            }, 30);
           }}
         />
         {!value && <span className={styles.caret} aria-hidden />}

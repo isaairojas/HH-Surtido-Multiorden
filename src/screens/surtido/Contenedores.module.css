@@ -1,0 +1,103 @@
+/* Letra del contenedor — equivale a contenedor-{a,b,c}{,-invertido,-completo}.svg de la referencia:
+   círculo de 30 px con la letra calada en blanco. */
+.letra {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-family-roboto);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.normal {
+  background: var(--color-primary-azul-300);
+  color: var(--color-blanco);
+}
+
+/* Sobre la tarjeta azul del pedido actual */
+.invertido {
+  background: var(--color-blanco);
+  color: var(--color-primary-azul-300);
+}
+
+.completo {
+  background: var(--color-botones-success);
+  color: var(--color-blanco);
+}
+
+/* "Container" 15:1500 — tres tarjetas a lo ancho */
+.contenedores {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.contenedor {
+  display: flex;
+  flex: 1 0 0;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 1px;
+  padding: 12px 8px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--color-primary-azul-300);
+  background: var(--color-blanco);
+}
+
+.icono {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.insignia {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--color-blanco);
+  background: var(--color-botones-success);
+  color: var(--color-blanco);
+  font: 700 10px/1 var(--font-family-roboto);
+}
+
+.listo {
+  background: var(--color-estatus-completado);
+  box-shadow: inset 0 0 0 1px var(--color-botones-success);
+}
+
+/* Pedido que recibe el próximo escaneo: relleno azul con sombra (el "seleccionado" de la referencia) */
+.actual {
+  background: var(--color-primary-azul-300);
+  box-shadow: var(--shadow-card-shadow);
+}
+
+.actual .datos {
+  color: var(--color-blanco);
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+  min-width: 0;
+  color: var(--color-negro);
+  font: 400 12px/normal var(--font-family-roboto);
+  white-space: nowrap;
+}
+
+.datos b {
+  font: var(--font-b2-body);
+  line-height: normal;
+}

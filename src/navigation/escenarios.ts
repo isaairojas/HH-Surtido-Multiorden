@@ -56,9 +56,31 @@ function rondaAlFilo(): RondaState {
   });
 }
 
+/** Al 100001 le falta 1 filtro 0486600: el próximo escaneo pasa el código al 100002. */
+function cambioDePedido(): RondaState {
+  return retocar(estadoInicial(), {
+    0: (p) => (p.codigo === '0486600' ? { ...p, surtido: p.solicitado - 1 } : p),
+  });
+}
+
+/**
+ * Bujía 2389475 negada en el 100002 (sin existencia tras surtir el 100001): su "Kit afinación"
+ * queda incompleto con el filtro ya surtido. Falta 1 pieza de 3310500 para resolver la ronda.
+ */
+function promocionIncompleta(): RondaState {
+  return retocar(estadoInicial(), {
+    0: completar,
+    1: (p) => (p.codigo === '2389475' ? { ...p, motivoNegacion: 'Sin existencia' } : completar(p)),
+    2: (p) => (p.codigo === '3310500' ? { ...p, surtido: p.solicitado - 1 } : completar(p)),
+  });
+}
+
 export const ESCENARIOS: Record<string, Semilla> = {
   /** Toma de tarea (ronda recién asignada, 3 pedidos pendientes). */
   tareas: { etapa: 'tareas' },
+
+  /** Detalle de la ronda antes de iniciar el surtido. */
+  'detalle-ronda': { etapa: 'tareas' },
 
   /** Surtido vacío, nadie ha escaneado nada. */
   inicial: { etapa: 'surtido' },
@@ -77,6 +99,12 @@ export const ESCENARIOS: Record<string, Semilla> = {
 
   /** Una pieza antes de cerrar la ronda entera. */
   'cierra-ronda': { etapa: 'surtido', ronda: rondaAlFilo() },
+
+  /** Una pieza antes de que el filtro pase del 100001 al 100002: aviso de cambio de pedido. */
+  'cambio-pedido': { etapa: 'surtido', ronda: cambioDePedido() },
+
+  /** Promoción AxB incompleta en el 100002: bloquea el cierre de la ronda. */
+  promocion: { etapa: 'surtido', ronda: promocionIncompleta() },
 };
 
 export function idEscenario(search: string = window.location.search): string | null {

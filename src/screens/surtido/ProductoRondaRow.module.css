@@ -1,6 +1,7 @@
+/* Card de la ronda — 15:1528 (Handheld for Claude): foto de 60, gap 15, filas apiladas con 8 px */
 .row {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   align-items: center;
   flex-shrink: 0;
   width: 100%;
@@ -16,22 +17,20 @@
   cursor: default;
 }
 
-.thumb {
+/* Miniatura sin borde ni fondo (D47 de la referencia) */
+.foto {
   display: flex;
-  width: 56px;
-  height: 56px;
-  padding: 4px;
-  border-radius: 8px;
-  background: var(--color-inactive);
-  overflow: hidden;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: 60px;
+  height: 60px;
+  overflow: hidden;
 }
 
-.thumb img {
-  max-width: 100%;
-  max-height: 100%;
+.foto img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -39,7 +38,8 @@
   display: flex;
   flex: 1 0 0;
   flex-direction: column;
-  gap: 4px;
+  align-self: stretch;
+  gap: 8px;
   min-width: 1px;
 }
 
@@ -64,43 +64,12 @@
   line-height: normal;
 }
 
-.badgeMulti {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--color-primary-azul-0);
-  color: var(--color-primary-azul-300);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.descripcion {
-  color: var(--color-negro);
-  font: var(--font-b1-body);
-  line-height: normal;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.foot {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
 .ubicacion {
   display: flex;
   gap: 5px;
   align-items: center;
   min-width: 0;
+  white-space: nowrap;
 }
 
 .ubicacionItem {
@@ -119,17 +88,56 @@
   line-height: normal;
 }
 
-.chipMismoCliente {
-  display: inline-flex;
+/* Desglose por contenedor — "Stock" 15:1545 */
+.desglose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
+  width: 100%;
+}
+
+.tag {
+  flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-active);
-  color: var(--color-active-text);
-  font-size: 10px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--color-primary-azul-300);
+  background: var(--color-blanco);
+  color: var(--color-primary-azul-300);
+  font: var(--font-label);
+  white-space: nowrap;
+}
+
+.tag b {
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+}
+
+.tagParcial {
+  background: var(--color-estatus-parcialidad);
+  box-shadow: none;
+  color: var(--color-negro);
+}
+
+.tagNegado {
+  background: var(--color-estatus-negado);
+  box-shadow: none;
+  color: var(--color-negro);
+}
+
+.tagListo {
+  background: var(--color-estatus-completado);
+  box-shadow: none;
+  color: var(--color-active-text);
+}
+
+/* Igual que la etiqueta "Mismo cliente" del Detalle de la ronda (34:154) */
+.chipMismoCliente {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--color-primary-azul-300);
+  color: var(--color-blanco);
+  font: 700 12px/normal var(--font-family-roboto);
   white-space: nowrap;
 }
 

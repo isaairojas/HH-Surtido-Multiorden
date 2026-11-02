@@ -31,6 +31,10 @@
   min-width: 1px;
 }
 
+.headerCentrado {
+  justify-content: center;
+}
+
 .headerLeft {
   display: flex;
   gap: 10px; /* figma: 1324:7055 */

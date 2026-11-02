@@ -9,7 +9,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  cambioDePedido,
   conteosRonda,
+  MOTIVO_PROMOCION,
   estadoInicial,
   estadoPartida,
   evaluarSurtido,
@@ -17,8 +19,10 @@ import {
   partidasANegar,
   productosVista,
   productoVista,
+  promocionesPendientes,
   proximaPartidaPara,
   rondaCompleta,
+  rondaFinalizable,
   rondaReducer,
   statusProducto,
   transicionDePedido,
@@ -116,11 +120,11 @@ test('la vista agrupa cada código una sola vez y suma los totales de la ronda',
   assert.equal(new Set(codigos).size, codigos.length, 'no debe repetirse ningún código');
 
   const filtro = v.find((x) => x.codigo === '0486600');
-  assert.equal(filtro.presencias.length, 2);
-  assert.equal(filtro.solicitadoTotal, 16); // 11 + 5
+  assert.equal(filtro.presencias.length, 3);
+  assert.equal(filtro.solicitadoTotal, 19); // 11 + 5 + 3
   assert.deepEqual(
     filtro.presencias.map((p) => p.pedidoId),
-    ['100001', '100002'],
+    ['100001', '100002', '100003'],
     'las presencias respetan el orden de picking',
   );
 });
@@ -179,6 +183,7 @@ test('partidasANegar lista los pedidos afectados con lo que se retira', () => {
   assert.deepEqual(afectadas, [
     { pedidoId: '100001', surtido: 4, solicitado: 11 },
     { pedidoId: '100002', surtido: 0, solicitado: 5 },
+    { pedidoId: '100003', surtido: 0, solicitado: 3 },
   ]);
 });
 
@@ -272,4 +277,72 @@ test('el estado inicial no comparte partidas con el mock entre llamadas', () => 
   const a = surtir(estadoInicial(), '0486600', 11);
   assert.equal(partida(a, '100001', '0486600').surtido, 11);
   assert.equal(partida(estadoInicial(), '100001', '0486600').surtido, 0);
+});
+
+/* ---------------------------------------------------------------- *
+ * SDD multiorden-surtido-listado · Avisos de cambio de pedido
+ * ---------------------------------------------------------------- */
+
+test('cambioDePedido detecta cuando las siguientes piezas del código van a otro pedido', () => {
+  const antes = surtir(estadoInicial(), '0486600', 10);
+  const despues = surtir(antes, '0486600', 1);
+  const c = cambioDePedido(antes.ronda, despues.ronda, '0486600');
+  assert.equal(c.desde.id, '100001');
+  assert.equal(c.hacia.id, '100002');
+  assert.equal(c.ordenHacia, 1);
+});
+
+test('sin cambio de destino, o sin destino, no hay aviso', () => {
+  const antes = estadoInicial();
+  const despues = surtir(antes, '0486600', 4);
+  assert.equal(cambioDePedido(antes.ronda, despues.ronda, '0486600'), null, 'sigue en el 100001');
+  // 7820001 solo vive en el 100003: al completarse no hay a dónde pasar.
+  const solo = surtir(antes, '7820001', 1);
+  assert.equal(cambioDePedido(antes.ronda, solo.ronda, '7820001'), null);
+});
+
+/* ---------------------------------------------------------------- *
+ * SDD multiorden-surtido-listado · Promoción incompleta al finalizar la ronda
+ * ---------------------------------------------------------------- */
+
+/** Todo surtido salvo la bujía del 100002, negada: su "Kit afinación" queda incompleto. */
+function conPromocionIncompleta() {
+  const s = completarTodo(estadoInicial(), (x, p) => p.id === '100002' && x.codigo === '2389475');
+  return rondaReducer(s, { type: 'negar', codigo: '2389475', motivo: 'Sin existencia' });
+}
+
+test('una promoción completa en el primer pedido e incompleta en el segundo solo lista el segundo', () => {
+  const s = conPromocionIncompleta();
+  assert.equal(partida(s, '100001', '2389475').surtido, 8, 'el 100001 conserva su bujía');
+  const pend = promocionesPendientes(s.ronda);
+  assert.equal(pend.length, 1);
+  assert.equal(pend[0].promocion.id, 'PROMO-AFINA');
+  assert.deepEqual(pend[0].pedidos.map((p) => p.pedidoId), ['100002']);
+});
+
+test('con una promoción incompleta la ronda está resuelta pero no se puede finalizar', () => {
+  const s = conPromocionIncompleta();
+  assert.equal(rondaCompleta(s.ronda), true);
+  assert.equal(rondaFinalizable(s.ronda), false);
+});
+
+test('una promoción sin iniciar no está pendiente (la detiene el surtido, no la promoción)', () => {
+  assert.deepEqual(promocionesPendientes(estadoInicial().ronda), []);
+});
+
+test('negar la promoción retira lo surtido solo en los pedidos donde quedó incompleta', () => {
+  const s = rondaReducer(conPromocionIncompleta(), { type: 'negarPromocion', promocionId: 'PROMO-AFINA' });
+  const filtro = partida(s, '100002', '0486600');
+  assert.equal(filtro.surtido, 0);
+  assert.equal(filtro.motivoNegacion, MOTIVO_PROMOCION);
+  assert.equal(partida(s, '100002', '2389475').motivoNegacion, 'Sin existencia', 'lo ya negado conserva su motivo');
+  assert.equal(partida(s, '100001', '0486600').surtido, 11, 'el 100001 completó la promoción');
+  assert.equal(partida(s, '100003', '0486600').surtido, 3, 'el filtro sin promoción no se toca');
+  assert.equal(rondaFinalizable(s.ronda), true);
+});
+
+test('negar una promoción que no está pendiente no cambia nada', () => {
+  const s = conPromocionIncompleta();
+  const negada = rondaReducer(s, { type: 'negarPromocion', promocionId: 'PROMO-AFINA' });
+  assert.deepEqual(rondaReducer(negada, { type: 'negarPromocion', promocionId: 'PROMO-AFINA' }), negada);
 });

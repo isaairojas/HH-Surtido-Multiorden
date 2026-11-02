@@ -233,3 +233,104 @@
   gap: 12px;
   white-space: nowrap;
 }
+
+/* ---- Aviso de cambio de pedido (multi-orden; sin nodo en Figma) ----
+   Mismo bloque que .transicion, con borde y folio en rojo: es el indicador del pedido que se
+   está surtiendo, igual que en el desglose del detalle. */
+.cambio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 16px 20px;
+  border: 2px solid var(--color-secondary-rojo-300);
+  border-radius: 8px;
+  background: var(--color-inactive);
+  text-align: center;
+}
+
+.cambioPedido {
+  color: var(--color-secondary-rojo-300);
+  font: var(--font-h2-headline);
+  line-height: normal;
+}
+
+.cambioOrden {
+  color: var(--color-negro);
+  font: var(--font-b2-body);
+  line-height: normal;
+}
+
+/* ---- Promoción incompleta (PromotionProductList del V2, agrupado por pedido) ---- */
+.promoTitulo {
+  width: 100%;
+  color: var(--color-negro);
+  font: var(--font-s2-subtitle);
+  font-weight: 700;
+  line-height: normal;
+}
+
+.promoTitulo span {
+  font-weight: 400;
+}
+
+.promoPedidos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.promoPedido {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+}
+
+.promoPedidoHead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+}
+
+.promoPedidoHead b {
+  font-weight: 700;
+}
+
+.promoFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-negro);
+  font: var(--font-b3-body);
+  line-height: normal;
+}
+
+.promoFila b {
+  font-weight: 700;
+}
+
+.promoPiezas {
+  font: var(--font-b2-body);
+  font-weight: 700;
+}
+
+.promoVacio {
+  color: var(--color-inactive-text);
+  font: var(--font-b1-body);
+  line-height: normal;
+}
+
+.promoLector {
+  display: flex;
+  width: 100%;
+}

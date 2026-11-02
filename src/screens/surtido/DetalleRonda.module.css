@@ -1,0 +1,93 @@
+/* Detalle de la ronda — 34:2 (Handheld for Claude) */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-blanco);
+}
+
+/* "Contenido detalle" 34:131 — 24 px entre paneles */
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  padding-bottom: 24px;
+}
+
+/* "Panel contenedor" 34:139 — gris, radio 8, relleno 14/16, 9.5 px entre filas */
+.panel {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 9.5px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+  color: var(--color-negro);
+}
+
+/* "Encabezado" 34:140 */
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* "Totales" 34:144 */
+.totales {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font: 400 16px/20.8px var(--font-family-roboto);
+  white-space: nowrap;
+}
+
+.totales b {
+  color: var(--color-primary-azul-300);
+  font: 700 22px/24.2px var(--font-family-roboto);
+  letter-spacing: 0.5px;
+}
+
+/* "Divider" 34:147 */
+.divider {
+  height: 1px;
+  background: #dedede;
+}
+
+/* Filas con ícono — 34:149 / 34:156 */
+.dato {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dato img {
+  flex-shrink: 0;
+}
+
+.texto {
+  flex: 1 0 0;
+  min-width: 1px;
+  overflow: hidden;
+  font: var(--font-b1-body);
+  line-height: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Etiqueta mismo cliente" 34:154 */
+.badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--color-primary-azul-300);
+  color: var(--color-blanco);
+  font: 700 12px/normal var(--font-family-roboto);
+  white-space: nowrap;
+}
+
+.flex1 {
+  flex: 1 0 0;
+}
