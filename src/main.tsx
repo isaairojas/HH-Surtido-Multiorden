@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import '@fontsource/roboto/100.css';
 import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/700.css';
@@ -11,10 +11,13 @@ import { semillaDesdeUrl } from './navigation/escenarios';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    {/* Rutas en el hash (#/surtido), como una sola página: el servidor siempre entrega index.html con
+        200. Con rutas reales, GitHub Pages respondía 404 a /surtido, /tareas… y en celular y HH la
+        app no cargaba. */}
+    <HashRouter>
       <AppStoreProvider semilla={semillaDesdeUrl()}>
         <App />
       </AppStoreProvider>
-    </BrowserRouter>
+    </HashRouter>
   </StrictMode>,
 );

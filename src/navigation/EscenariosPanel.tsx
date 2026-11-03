@@ -116,9 +116,9 @@ const ESCENARIOS: Escenario[] = [
   },
 ];
 
+/** El escenario va en la query real (la lee `semillaDesdeUrl` al arrancar) y la pantalla, en el hash. */
 function urlFor(e: Escenario) {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  return `${base}${e.ruta}?escenario=${e.id}`;
+  return `${import.meta.env.BASE_URL}?escenario=${e.id}#${e.ruta}`;
 }
 
 export function EscenariosPanel() {
