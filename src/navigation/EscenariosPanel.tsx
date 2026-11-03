@@ -116,9 +116,12 @@ const ESCENARIOS: Escenario[] = [
   },
 ];
 
-/** El escenario va en la query real (la lee `semillaDesdeUrl` al arrancar) y la pantalla, en el hash. */
+/**
+ * El escenario va en la query real (la lee `semillaDesdeUrl` al arrancar) y la pantalla, en el hash.
+ * Sin ruta: el enlace conserva la de la página (GitHub Pages, githack …/index.html o dev).
+ */
 function urlFor(e: Escenario) {
-  return `${import.meta.env.BASE_URL}?escenario=${e.id}#${e.ruta}`;
+  return `?escenario=${e.id}#${e.ruta}`;
 }
 
 export function EscenariosPanel() {

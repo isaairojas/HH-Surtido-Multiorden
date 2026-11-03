@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # contents: write para publicar la rama demo.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,8 +28,30 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
-      # Pages no conoce las rutas de React Router: /surtido o /detalle/… darían 404 al recargar.
-      # Servir el mismo index.html como 404 deja que el router resuelva la ruta.
+      # Rama "demo" con el build, para abrir la app por raw.githack.com: en datos móviles las IPs de
+      # GitHub Pages no responden (verificado 2026-11-03) y githack sí. githack sirve archivos de una
+      # rama, así que el build tiene que vivir en una. Se conservan los JS/CSS de entrada de la
+      # publicación anterior: githack guarda el index.html 60 s y no debe apuntar a archivos borrados.
+      - name: Publicar rama demo
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf demo prev && cp -r dist demo
+          if git fetch --depth=1 origin demo; then
+            mkdir prev && git archive FETCH_HEAD | tar -x -C prev
+            for f in $(grep -oE 'assets/[^"?]+\.(js|css)' prev/index.html); do
+              if [ -f "prev/$f" ] && [ ! -f "demo/$f" ]; then cp "prev/$f" "demo/$f"; fi
+            done
+          fi
+          cd demo
+          git init -q -b demo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Demo ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" demo
+      # Enlaces viejos con rutas reales (/surtido?escenario=…, de antes del hash) darían 404 en Pages.
+      # Servir el mismo index.html como 404 los sigue abriendo: el escenario sale de la query.
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:

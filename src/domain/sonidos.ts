@@ -5,7 +5,7 @@
  */
 type Clave = 'ok' | 'error';
 
-// BASE_URL: en GitHub Pages la app vive bajo /HH-Surtido-Multiorden/.
+// BASE_URL: "./" en el build (relativo a la página, sirve en GitHub Pages y en githack); "/" en dev.
 const urls: Record<Clave, string> = {
   ok: `${import.meta.env.BASE_URL}sounds/beep-ok.mp3`,
   error: `${import.meta.env.BASE_URL}sounds/beep-error.mp3`,
