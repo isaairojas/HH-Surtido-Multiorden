@@ -5,7 +5,8 @@
  *
  * Diferencias con la referencia (sesión del 2026-11-02):
  * - Las tarjetas no filtran la lista: solo muestran el avance de cada pedido.
- * - En vez del pedido seleccionado, se resalta (relleno azul) el pedido que recibe el próximo escaneo.
+ * - En vez del pedido seleccionado, se resalta (relleno azul) el pedido que se está surtiendo; ninguno
+ *   hasta el primer escaneo.
  * - La letra se dibuja con CSS en lugar de los SVG A/B/C, para servir con cualquier número de pedidos.
  * Solo presentación: no cambia ninguna regla de la ronda.
  */
@@ -42,7 +43,7 @@ export function avancePedido(p: Pedido) {
   };
 }
 
-/** Una tarjeta por pedido con su letra, número y avance en piezas. */
+/** Una tarjeta por pedido con su letra, número y avance en piezas. `actualIdx` = -1: ninguna marcada. */
 export function ContenedoresResumen({ pedidos, actualIdx }: { pedidos: Pedido[]; actualIdx: number }) {
   return (
     <div className={styles.contenedores}>

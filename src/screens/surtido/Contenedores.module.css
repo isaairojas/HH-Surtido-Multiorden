@@ -33,7 +33,8 @@
   flex-shrink: 0;
   gap: 10px;
   width: 100%;
-  margin-top: 12px;
+  /* El panel separa con 21 px; se compensa para quedar a 12 px del avance de la ronda, igual que la lista abajo. */
+  margin-top: -9px;
 }
 
 .contenedor {

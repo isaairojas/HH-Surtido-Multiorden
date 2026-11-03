@@ -43,7 +43,7 @@ const ESCENARIOS: Escenario[] = [
     reglas: [
       'Los productos van agrupados por familia, en orden alfabético (Bomba gasolina, Cinta, Foco…).',
       'Cada card desglosa el avance por contenedor (A 0/2 · B 0/2).',
-      'Las tarjetas superiores muestran el avance de cada pedido; la azul recibe el próximo escaneo.',
+      'Las tarjetas superiores muestran el avance de cada pedido; ninguna va marcada hasta el primer escaneo.',
       'Al escanear se surte el pedido pendiente con menor orden que todavía lo necesite.',
       'Todos son misceláneos (la cantidad se captura a mano) salvo la bomba 0607006, que se escanea.',
       'En la bomba, la etiqueta de 18 dígitos surte directo; el código de 7 abre la captura de cantidad.',

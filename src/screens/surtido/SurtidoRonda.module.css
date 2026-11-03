@@ -9,7 +9,8 @@
 .list {
   display: flex;
   flex-direction: column;
-  margin-top: 8px;
+  /* 21 px del panel + 10 px de relleno de la fila − 19 = 12 px visibles bajo los contenedores. */
+  margin-top: -19px;
 }
 
 .itemContainer {

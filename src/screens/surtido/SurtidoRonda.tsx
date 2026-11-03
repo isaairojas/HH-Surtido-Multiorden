@@ -77,11 +77,12 @@ export function SurtidoRonda() {
   const c = conteosRonda(ronda.ronda);
   const idxActual = pedidoActualIdx(ronda.ronda);
   /**
-   * Pedido que se marca como "en surtido": el que recibió el último escaneo mientras siga abierto;
-   * si ya se completó (o aún no se escanea nada), el siguiente pendiente.
+   * Pedido que se marca como "en surtido": ninguno hasta el primer escaneo (sesión del 2026-11-02);
+   * después, el que recibió el último escaneo mientras siga abierto, o el siguiente pendiente si ya
+   * se completó.
    */
   const idxUltimo = ultimoEscaneo ? ronda.ronda.pedidos.findIndex((p) => p.id === ultimoEscaneo.pedidoId) : -1;
-  const idxMarcado = idxUltimo >= 0 && !pedidoCompleto(ronda.ronda.pedidos[idxUltimo]) ? idxUltimo : idxActual;
+  const idxMarcado = idxUltimo < 0 ? -1 : pedidoCompleto(ronda.ronda.pedidos[idxUltimo]) ? idxActual : idxUltimo;
 
   // El último producto escaneado se lleva a la vista para que el surtidor lo vea marcado.
   useEffect(() => {
@@ -207,7 +208,8 @@ export function SurtidoRonda() {
           pendientes={c.pendientes}
         />
 
-        {/* Avance individual por pedido; el resaltado es el pedido que recibe el próximo escaneo. */}
+        {/* Avance individual por pedido; el resaltado es el pedido que se está surtiendo
+            (ninguno hasta el primer escaneo). */}
         <ContenedoresResumen pedidos={ronda.ronda.pedidos} actualIdx={idxMarcado} />
 
         <div className={styles.list}>

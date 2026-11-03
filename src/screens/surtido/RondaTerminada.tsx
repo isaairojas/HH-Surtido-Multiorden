@@ -26,7 +26,7 @@ import styles from './RondaTerminada.module.css';
 
 export function RondaTerminada() {
   const navigate = useNavigate();
-  const { ronda, dispatch, setEtapa } = useStore();
+  const { ronda, dispatch, setEtapa, setUltimoEscaneo } = useStore();
   const c = conteosRonda(ronda.ronda);
   const pedidos = ronda.ronda.pedidos;
   // En el flujo normal solo se llega aquí con la ronda cerrada, pero a la pantalla se puede
@@ -36,6 +36,8 @@ export function RondaTerminada() {
   const volverAlMenu = () => {
     // La ronda queda cerrada: la bandeja arranca de nuevo con una ronda limpia (FR-020).
     dispatch({ type: 'reiniciar' });
+    // La ronda nueva arranca sin pedido marcado.
+    setUltimoEscaneo(null);
     setEtapa('tareas');
     navigate('/tareas');
   };
