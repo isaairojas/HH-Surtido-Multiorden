@@ -1,6 +1,6 @@
 /**
  * Mock de 1 ronda con 3 pedidos, con códigos reales del catálogo (2026-11-02).
- * - 100001 y 100002 comparten cliente CLI-A → chip "Mismo cliente".
+ * - 100001 y 100002 comparten cliente CLI-A → "Mismo cliente" en el Detalle de la ronda (no en el listado).
  * - 100003 es de otro cliente.
  * - 1394010 (cinta) y 6200401 (limpiador de carburador) aparecen en 100001 y 100002.
  *
@@ -17,7 +17,7 @@
  *   el 100003 la cinta va suelta, sin promoción. Negar el limpiador cuando ya está completo en el
  *   100001 deja incompleta la promoción del 100002 y bloquea el cierre de la ronda.
  *
- * La ronda cumple las reglas de armado (sdd/changes/multiorden-armado-ronda): los tres pedidos
+ * La ronda cumple las reglas de armado (sdd/changes/2026-10-26-multiorden-armado-ronda): los tres pedidos
  * comparten algún código con la ronda (el 100003 comparte 2012000 y 1394010) y suman
  * 12 partidas, debajo del tope inicial de 15.
  *

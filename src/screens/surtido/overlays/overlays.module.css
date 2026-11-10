@@ -235,31 +235,21 @@
 }
 
 /* ---- Aviso de cambio de pedido (multi-orden; sin nodo en Figma) ----
-   Mismo bloque que .transicion, con borde y folio en rojo: es el indicador del pedido que se
-   está surtiendo, igual que en el desglose del detalle. */
-.cambio {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+   Desde el 2026-11-09 usa los bloques comunes (.datos y .transicion), sin el recuadro rojo. */
+
+/* Descripción en el bloque de datos: hasta dos líneas, para que se reconozca el producto sin alargar el modal. */
+.datoDescripcion {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Filas con un valor más alto que el texto (letra del contenedor, cantidad): centradas en vertical. */
+.datoFilaCentrada {
   align-items: center;
-  width: 100%;
-  padding: 16px 20px;
-  border: 2px solid var(--color-secondary-rojo-300);
-  border-radius: 8px;
-  background: var(--color-inactive);
-  text-align: center;
-}
-
-.cambioPedido {
-  color: var(--color-secondary-rojo-300);
-  font: var(--font-h2-headline);
-  line-height: normal;
-}
-
-.cambioOrden {
-  color: var(--color-negro);
-  font: var(--font-b2-body);
-  line-height: normal;
 }
 
 /* ---- Promoción incompleta (PromotionProductList del V2, agrupado por pedido) ---- */
@@ -333,4 +323,67 @@
 .promoLector {
   display: flex;
   width: 100%;
+}
+
+/* ---- Menú ⋮ del listado (Finalizar surtido / Repetir audio), como el del V2 ---- */
+.menuFondo {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+}
+
+.menu {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: var(--color-blanco);
+  box-shadow: var(--shadow-modal-shadow);
+}
+
+.menuOpcion {
+  padding: 14px 18px;
+  border: none;
+  background: var(--color-blanco);
+  color: var(--color-negro);
+  font: var(--font-b3-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuOpcion:active,
+.menuOpcion:focus-visible {
+  background: var(--color-primary-azul-0);
+}
+
+/* Parciales al finalizar: las mismas filas del listado (imagen, código, avance y desglose), con scroll como el
+   `PartialProductList` del V2 (más de 5 elementos). */
+.listaParciales {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid var(--color-inactive);
+}
+
+/* Lista de pedidos dentro de un aviso (desvinculación) */
+.listaAviso {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--color-inactive);
+  color: var(--color-negro);
+  font: var(--font-b1-body);
+  line-height: normal;
+  list-style: none;
 }

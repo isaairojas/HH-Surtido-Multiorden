@@ -15,15 +15,20 @@
  *     (regla de Revision-HH-v2); no se aplica el remanente.
  *
  * Mejoras SDD sobre el canónico de exodus-gtm-pwa (ver sdd/README.md):
- *   - SDD multiorden-armado-ronda: qué pedidos forman la ronda. Lo evalúa el back-end; este
- *     módulo sigue recibiendo la ronda ya armada. Parámetros: configMultiorden.ts.
- *   - SDD multiorden-surtido-listado: lo que este módulo simula (vista por código, asignación,
+ *   - SDD 2026-10-26-multiorden-armado-ronda: qué pedidos forman la ronda. Lo evalúa el back-end; este
+ *     módulo sigue recibiendo la ronda ya armada. El simulador del armado está en armado.ts.
+ *   - SDD 2026-10-26-multiorden-surtido-listado: lo que este módulo simula (vista por código, asignación,
  *     negación, cierre de pedido).
  *   - Negación (2026-10-26, sustituye la regla de un solo pedido del 2026-10-21): se niegan el
  *     pedido en proceso y todos los posteriores que tengan el código, retirando lo ya surtido.
  *     No hay negación parcial: el surtidor no decide qué pedido se queda la mercancía.
  *   - Promociones AxB (2026-10-27): se evalúan por pedido con la regla del V2 real
  *     (`getPendingPromotionProducts`) y solo bloquean el cierre de la ronda. Ver `promocionesPendientes`.
+ *   - Corrección en escalera (2026-11-09, clarify 9-17): "Corregir {letra}" deja en 0, con confirmación, el
+ *     último pedido con piezas del código; con él en 0, se corrige el anterior, hasta el primero. Ver
+ *     `partidaACorregir`.
+ *   - "Cantidad surtida" del detalle como el V2 (clarify 28, sustituye a la 18): se surte desde el listado; en
+ *     el detalle, el pedido en surtido se ajusta con −/+ o a mano solo si ya tiene piezas. Ver `fijarCantidad`.
  */
 import type { OrderItemStatus } from '../design-system/components/molecules/OrderItemRow/OrderItemRow';
 import { RONDA_INICIAL } from '../mocks/ronda';
@@ -59,22 +64,35 @@ export type PartidaPedido = {
   promocion: Promocion | null;
   /**
    * Familia del catálogo (`apFamilia`: Producto → apFamiliaGrupo → apDivisionFamilia → apFamilia).
-   * SDD surtido-listado-imagen-familia · Agrupación por familia. En el real no viene en IAssortmentProduct.
+   * SDD 2026-10-26-surtido-listado-imagen-familia · Agrupación por familia. En el real no viene en IAssortmentProduct.
+   * Cadena vacía = el código no tiene familia en el catálogo (va al final al agrupar).
    */
   familia: string;
 };
 
 /*
+ * Etiqueta única (EU) y caducidad más próxima (PEPS): fuera de la demo (decisión del 2026-11-09). En la ronda
+ * funcionan como en la canónica; solo cambia que la etiqueta se relaciona con el pedido que recibe la pieza y no
+ * se repite en la ronda. Ver SDD 2026-10-26-multiorden-surtido-listado · Validación de etiqueta única (EU).
+ */
+
+/*
  * Campos que este modelo no tiene y que el canónico tampoco trae en IAssortmentProduct:
- *   - SDD multiorden-armado-ronda: servicio, tipo de pedido y origen por división de factura.
- *   - SDD multiorden-armado-ronda · Pedidos corporativos: groupId de la ronda y relOrdenID por pedido.
- *   - SDD multiorden-revision-por-pedido · Envío de la revisión por pedido: dirección de entrega.
- * `cliente` sí existe aquí pero no en el contrato real (choque C4 de sdd/analisis-repositorio.md).
+ *   - SDD 2026-10-26-multiorden-armado-ronda: servicio, tipo de pedido y origen por división de factura.
+ *   - SDD 2026-10-26-multiorden-armado-ronda · Pedidos corporativos: groupId de la ronda y relOrdenID por pedido.
+ * `cliente` sí existe aquí pero no en el contrato real (choque C4 de sdd/changes/2026-10-26-multiorden-surtido-listado/analisis-repositorio.md).
  */
 export type Pedido = {
   id: string;
   cliente: Cliente;
   partidas: PartidaPedido[];
+  /** Corporativo con orden de compra: no permite negar y, si queda incompleto, se saca de la ronda. */
+  corporativoOC?: boolean;
+  /**
+   * Letra del contenedor (A, B, C…), asignada por su lugar al tomar la ronda. No cambia si otro pedido sale
+   * de la ronda: el contenedor físico sigue siendo el mismo.
+   */
+  contenedor?: string;
 };
 
 export type Ronda = {
@@ -85,26 +103,35 @@ export type Ronda = {
 export type RondaState = { ronda: Ronda };
 
 export type RondaAction =
-  /** Suma `cantidad` al pedido con menor orden que todavía necesita el código. */
+  /** Suma `cantidad` al pedido con menor orden que todavía necesita el código (lector o captura). */
   | { type: 'surtirPorCodigo'; codigo: string; cantidad: number }
   /**
-   * Fija la cantidad surtida de una partida concreta (stepper del detalle).
-   * SDD multiorden-surtido-listado · Corregir la cantidad surtida de un pedido: hoy solo se usa
-   * sobre el pedido destino; la regla pide poder elegir cualquier pedido del desglose y bajarla o
-   * reiniciarla a 0.
+   * Saca el pedido de la ronda (corporativo con orden de compra incompleto al finalizar).
+   * SDD 2026-10-26-multiorden-surtido-listado · Sacar el pedido de la ronda.
    */
-  | { type: 'fijarSurtido'; pedidoId: string; codigo: string; cantidad: number }
+  | { type: 'retirarPedido'; pedidoId: string }
+  /** Sustituye el estado completo: salir del listado descarta todo y la tarea vuelve a como llegó. */
+  | { type: 'cargar'; estado: RondaState }
+  /**
+   * Regresa a 0 las piezas del código en el último pedido que tiene (`partidaACorregir`).
+   * SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido.
+   */
+  | { type: 'corregir'; codigo: string }
+  /**
+   * "Cantidad surtida" del detalle, como el V2 (clarify del 2026-11-09, fila 28): fija la cantidad del código en
+   * el pedido en surtido al regresar al listado. Se valida antes con `evaluarCantidadDetalle`.
+   */
+  | { type: 'fijarCantidad'; codigo: string; pedidoId: string; cantidad: number }
   /**
    * Niega el código desde el pedido en proceso hasta el último de la ronda (`partidasANegar`).
-   * SDD multiorden-surtido-listado · Negar producto desde el detalle.
+   * SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el detalle.
    */
   | { type: 'negar'; codigo: string; motivo: string }
   /**
    * Niega la promoción en cada pedido donde quedó incompleta, retirando lo surtido.
-   * SDD multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
+   * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
    */
   | { type: 'negarPromocion'; promocionId: string }
-  // SDD multiorden-surtido-listado · Sacar el pedido de la ronda: aquí entraría `retirarPedido`.
   | { type: 'reiniciar' };
 
 /**
@@ -127,8 +154,29 @@ function clonar(ronda: Ronda): Ronda {
 }
 
 export function estadoInicial(ronda: Ronda = RONDA_INICIAL): RondaState {
-  return { ronda: clonar(ronda) };
+  const r = clonar(ronda);
+  return { ronda: { ...r, pedidos: r.pedidos.map((p, i) => ({ ...p, contenedor: p.contenedor ?? letraPorIndice(i) })) } };
 }
+
+/** Letra por el lugar en la ronda: 0 → A, 1 → B, … */
+export const letraPorIndice = (idx: number) => String.fromCharCode(65 + idx);
+
+/** Letra del contenedor del pedido en la posición `idx` (la asignada al tomar la ronda). */
+export function letraDe(r: Ronda, idx: number): string {
+  return r.pedidos[idx]?.contenedor ?? letraPorIndice(idx);
+}
+
+/**
+ * La tarea tal como llega del servidor: sin piezas ni negaciones registradas desde la HH. Salir del listado
+ * descarta todo lo registrado, negaciones incluidas, y la tarea vuelve a este estado.
+ */
+export function tareaSinAvance(s: RondaState): RondaState {
+  const pedidos = s.ronda.pedidos.map((p) => ({ ...p, partidas: p.partidas.map((x) => ({ ...x, surtido: 0, motivoNegacion: null })) }));
+  return { ronda: { ...s.ronda, pedidos } };
+}
+
+/** Ronda multi-orden: más de un pedido. Con uno solo, el listado se comporta como hoy. */
+export const esMultiorden = (r: Ronda) => r.pedidos.length > 1;
 
 /* ------------------------------------------------------------------ *
  * Estado de una partida
@@ -238,6 +286,8 @@ export type Presencia = {
   pedidoId: string;
   cliente: Cliente;
   ordenPedido: number;
+  /** Letra del contenedor del pedido. */
+  contenedor: string;
   surtido: number;
   solicitado: number;
   estado: EstadoPartida;
@@ -267,8 +317,8 @@ export type ProductoVista = {
  * aparición: son atributos del producto, no del pedido, así que se asumen iguales
  * en todas las partidas del mismo código.
  *
- * SDD multiorden-surtido-listado · Lista agregada por código: esta función.
- * SDD surtido-listado-imagen-familia · Agrupación por familia: agruparía por familia dentro de
+ * SDD 2026-10-26-multiorden-surtido-listado · Lista agregada por código: esta función.
+ * SDD 2026-10-26-surtido-listado-imagen-familia · Agrupación por familia: agruparía por familia dentro de
  * cada sección. Ojo: el V2 real ordena por ubicación o código, no por primera aparición.
  */
 export function productosVista(r: Ronda): ProductoVista[] {
@@ -279,6 +329,7 @@ export function productosVista(r: Ronda): ProductoVista[] {
         pedidoId: pedido.id,
         cliente: pedido.cliente,
         ordenPedido,
+        contenedor: letraDe(r, ordenPedido),
         surtido: part.surtido,
         solicitado: part.solicitado,
         estado: estadoPartida(part),
@@ -309,15 +360,19 @@ export function productosVista(r: Ronda): ProductoVista[] {
 }
 
 /**
- * Agrupación por familia (SDD surtido-listado-imagen-familia, regla del 2026-10-30): las familias van
- * en orden alfabético y, dentro de cada una, los códigos conservan el orden que traían (secuencia de
- * picking). Solo reordena la vista: no cambia a qué pedido entra cada escaneo.
+ * Agrupación por familia (SDD 2026-10-26-surtido-listado-imagen-familia): las familias van en orden alfabético y,
+ * dentro de cada una, los códigos de menor a mayor (regla del 2026-11-09: antes conservaban la secuencia de
+ * picking y en "Foco" salía 2012000 antes que 1978000). Los códigos sin familia van juntos al final, también
+ * de menor a mayor. Solo reordena la vista: no cambia a qué pedido entra cada escaneo.
  */
 export function ordenarPorFamilia(v: ProductoVista[]): ProductoVista[] {
-  return v
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => a.p.familia.localeCompare(b.p.familia, 'es', { sensitivity: 'base' }) || a.i - b.i)
-    .map((x) => x.p);
+  const clave = (p: ProductoVista) => (p.familia.trim() ? 0 : 1);
+  return [...v].sort(
+    (a, b) =>
+      clave(a) - clave(b) ||
+      a.familia.localeCompare(b.familia, 'es', { sensitivity: 'base' }) ||
+      a.codigo.localeCompare(b.codigo, 'es', { numeric: true }),
+  );
 }
 
 export function productoVista(r: Ronda, codigo: string): ProductoVista | undefined {
@@ -374,13 +429,14 @@ export const partidaEn = (r: Ronda, loc: UbicacionPartida): PartidaPedido =>
 
 export type PartidaANegar = UbicacionPartida & {
   pedidoId: string;
+  contenedor: string;
   /** Piezas ya surtidas que se retiran al negar. */
   surtido: number;
   solicitado: number;
 };
 
 /**
- * Partidas que se niegan juntas (SDD multiorden-surtido-listado · Negar producto desde el
+ * Partidas que se niegan juntas (SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el
  * detalle): la del pedido en proceso —el de menor orden que todavía necesita el código— y
  * las de todos los pedidos posteriores que lo tengan sin negar, aunque no se hayan surtido.
  * Los pedidos anteriores ya completos no se tocan. Vacío si ningún pedido necesita el código.
@@ -393,22 +449,52 @@ export function partidasANegar(r: Ronda, codigo: string): PartidaANegar[] {
     const j = r.pedidos[i].partidas.findIndex((p) => p.codigo === codigo && p.motivoNegacion === null);
     if (j < 0) continue;
     const p = r.pedidos[i].partidas[j];
-    out.push({ pedidoIdx: i, partidaIdx: j, pedidoId: r.pedidos[i].id, surtido: p.surtido, solicitado: p.solicitado });
+    out.push({ pedidoIdx: i, partidaIdx: j, pedidoId: r.pedidos[i].id, contenedor: letraDe(r, i), surtido: p.surtido, solicitado: p.solicitado });
   }
   return out;
 }
 
+export type PartidaACorregir = UbicacionPartida & { pedidoId: string; contenedor: string; surtido: number; solicitado: number };
+
+/**
+ * Partida que corrige el detalle (SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un
+ * pedido, regla del 2026-11-09): la del último pedido de la ronda con piezas del código. El escaneo
+ * llena A, luego B, luego C, así que lo que sobra siempre quedó en el último; el surtidor no elige qué
+ * pedido se queda la mercancía. Tras corregirla, la siguiente llamada da el pedido anterior con piezas
+ * ("Corregir {anterior}"). null si ningún pedido tiene piezas del código.
+ */
+export function partidaACorregir(r: Ronda, codigo: string): PartidaACorregir | null {
+  for (let i = r.pedidos.length - 1; i >= 0; i--) {
+    const j = r.pedidos[i].partidas.findIndex((p) => p.codigo === codigo && p.surtido > 0);
+    if (j < 0) continue;
+    const p = r.pedidos[i].partidas[j];
+    return { pedidoIdx: i, partidaIdx: j, pedidoId: r.pedidos[i].id, contenedor: letraDe(r, i), surtido: p.surtido, solicitado: p.solicitado };
+  }
+  return null;
+}
+
 /**
  * Motivos de rechazo de un surtido, con los textos exactos de Revision-HH-v2.
- * `fuera-de-ronda` es propio del multi-orden: el código no vive en ninguna
- * partida pendiente de la ronda (FR-011).
+ * `fuera-de-ronda`: el código no está en ningún pedido de la ronda (FR-011). Un código que sí está pero ya se
+ * surtió completo en todos los pedidos que lo piden es un sobrante, como hoy: `excede-solicitado`.
  */
-export type RechazoSurtido = 'fuera-de-ronda' | 'cantidad-cero' | 'excede-solicitado' | 'excede-existencia';
+export type RechazoSurtido =
+  | 'fuera-de-ronda'
+  | 'producto-negado'
+  | 'cantidad-cero'
+  | 'excede-solicitado'
+  | 'excede-existencia';
 
+/** Textos de hoy (es.ts del V2) salvo los propios del multi-orden, marcados como provisionales. */
 export const AVISOS: Record<RechazoSurtido, { title: string; message: string }> = {
   'fuera-de-ronda': {
     title: 'Código inválido',
-    message: 'El código escaneado no pertenece a ningún pedido pendiente de esta ronda.',
+    message: 'El código escaneado no pertenece a ningún pedido de esta ronda.',
+  },
+  // Validación de producto escaneado: el código ya no lo necesita ningún pedido y está negado.
+  'producto-negado': {
+    title: 'Producto negado',
+    message: 'El código escaneado fue negado y no es posible agregar unidades.',
   },
   'cantidad-cero': {
     title: 'Cantidad inválida',
@@ -434,7 +520,12 @@ export type EvaluacionSurtido =
  */
 export function evaluarSurtido(r: Ronda, codigo: string, cantidad: number): EvaluacionSurtido {
   const loc = proximaPartidaPara(r, codigo);
-  if (!loc) return { ok: false, rechazo: 'fuera-de-ronda' };
+  if (!loc) {
+    if (codigoNegado(r, codigo)) return { ok: false, rechazo: 'producto-negado' };
+    if (!codigoEnRonda(r, codigo)) return { ok: false, rechazo: 'fuera-de-ronda' };
+    // Sobrante (revisión del 2026-11-09): ya surtido en todos sus pedidos; se valida la cantidad como hoy.
+    return { ok: false, rechazo: cantidad <= 0 ? 'cantidad-cero' : 'excede-solicitado' };
+  }
   const p = partidaEn(r, loc);
   if (cantidad <= 0) return { ok: false, rechazo: 'cantidad-cero' };
   if (p.surtido + cantidad > p.solicitado) return { ok: false, rechazo: 'excede-solicitado' };
@@ -442,16 +533,29 @@ export function evaluarSurtido(r: Ronda, codigo: string, cantidad: number): Eval
   return { ok: true, loc, pedidoId: r.pedidos[loc.pedidoIdx].id };
 }
 
-/** Misma validación para el stepper del detalle, que fija un valor absoluto. */
-export function evaluarCantidadAbsoluta(p: PartidaPedido, cantidad: number): RechazoSurtido | null {
-  if (cantidad < 0) return 'cantidad-cero';
+/**
+ * Validación de "Cantidad surtida" al regresar del detalle, la de hoy (`validateAssortedQuantity` del V2):
+ * cantidad cero, mayor a la solicitada del pedido o mayor a la existencia. null si es válida.
+ */
+export function evaluarCantidadDetalle(p: PartidaPedido, cantidad: number): RechazoSurtido | null {
+  if (!Number.isFinite(cantidad) || cantidad <= 0) return 'cantidad-cero';
   if (cantidad > p.solicitado) return 'excede-solicitado';
   if (cantidad > p.existencia) return 'excede-existencia';
   return null;
 }
 
+/** El código está en algún pedido de la ronda, en cualquier estado. */
+export function codigoEnRonda(r: Ronda, codigo: string): boolean {
+  return r.pedidos.some((p) => p.partidas.some((x) => x.codigo === codigo));
+}
+
+/** El código está negado en algún pedido de la ronda. */
+export function codigoNegado(r: Ronda, codigo: string): boolean {
+  return r.pedidos.some((p) => p.partidas.some((x) => x.codigo === codigo && x.motivoNegacion !== null));
+}
+
 /**
- * Cambio de pedido de un código (SDD multiorden-surtido-listado · Avisos de cambio de pedido):
+ * Cambio de pedido de un código (SDD 2026-10-26-multiorden-surtido-listado · Avisos de cambio de pedido):
  * el surtido dejó completa la partida del código en un pedido y las siguientes piezas ya van a
  * otro. Devuelve los dos pedidos, o null si el destino no cambió o ya no hay destino.
  */
@@ -459,11 +563,22 @@ export function cambioDePedido(
   antes: Ronda,
   despues: Ronda,
   codigo: string,
-): { desde: Pedido; hacia: Pedido; ordenHacia: number } | null {
+): { desde: Pedido; ordenDesde: number; letraDesde: string; hacia: Pedido; ordenHacia: number } | null {
   const a = proximaPartidaPara(antes, codigo);
   const d = proximaPartidaPara(despues, codigo);
   if (!a || !d || a.pedidoIdx === d.pedidoIdx) return null;
-  return { desde: despues.pedidos[a.pedidoIdx], hacia: despues.pedidos[d.pedidoIdx], ordenHacia: d.pedidoIdx };
+  return {
+    desde: despues.pedidos[a.pedidoIdx],
+    ordenDesde: a.pedidoIdx,
+    letraDesde: letraDe(despues, a.pedidoIdx),
+    hacia: despues.pedidos[d.pedidoIdx],
+    ordenHacia: d.pedidoIdx,
+  };
+}
+
+/** Piezas surtidas de un código en un pedido (0 si el pedido no lo pide). Las muestra el aviso "Pedido surtido". */
+export function piezasEn(p: Pedido, codigo: string): number {
+  return p.partidas.find((x) => x.codigo === codigo)?.surtido ?? 0;
 }
 
 /* ------------------------------------------------------------------ *
@@ -475,7 +590,7 @@ export type PartidaPromocion = { codigo: string; descripcion: string; surtido: n
 export type PromocionPendiente = {
   promocion: Promocion;
   /** Solo los pedidos donde la promoción quedó incompleta, en el orden de la ronda. */
-  pedidos: { pedidoId: string; ordenPedido: number; partidas: PartidaPromocion[] }[];
+  pedidos: { pedidoId: string; ordenPedido: number; contenedor: string; partidas: PartidaPromocion[] }[];
 };
 
 /**
@@ -495,7 +610,7 @@ function promocionIncompleta(partidas: PartidaPedido[]): boolean {
  * Promociones que impiden cerrar la ronda, agrupadas por id entre pedidos. Por el orden
  * consecutivo del surtido, el primer pedido puede completar la promoción y los siguientes no:
  * solo se listan los pedidos donde quedó incompleta.
- * SDD multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
+ * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
  */
 export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
   const porId = new Map<string, PromocionPendiente>();
@@ -508,6 +623,7 @@ export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
       pendiente.pedidos.push({
         pedidoId: pedido.id,
         ordenPedido,
+        contenedor: letraDe(r, ordenPedido),
         partidas: partidas.map((p) => ({
           codigo: p.codigo,
           descripcion: p.descripcion,
@@ -520,6 +636,36 @@ export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
     }
   });
   return [...porId.values()];
+}
+
+/* ------------------------------------------------------------------ *
+ * Finalizar el surtido (SDD 2026-11-05-multiorden-surtido-listado-cierre · Bloqueos y fallas al finalizar)
+ * ------------------------------------------------------------------ */
+
+/** Hay partidas en 0 sin negar: al finalizar de forma manual se pide negarlas primero. */
+export function hayCodigosSinSurtir(r: Ronda): boolean {
+  return r.pedidos.some((p) => p.partidas.some((x) => x.motivoNegacion === null && x.surtido === 0));
+}
+
+/** Pedidos con alguna partida surtida parcialmente, en el orden de la ronda. */
+export function pedidosConParciales(r: Ronda): { pedido: Pedido; idx: number }[] {
+  return r.pedidos
+    .map((pedido, idx) => ({ pedido, idx }))
+    .filter(({ pedido }) => pedido.partidas.some((x) => estadoPartida(x) === 'parcial'));
+}
+
+/**
+ * Códigos con alguna partida surtida parcialmente, una vez cada uno y con su avance total y por contenedor,
+ * como la fila del listado (revisión del 2026-11-09: "agrúpalos como en la ventana principal"). El orden lo
+ * pone la pantalla, igual que el listado (por familia si la bandera está activa).
+ */
+export function codigosParciales(r: Ronda): ProductoVista[] {
+  return productosVista(r).filter((v) => v.presencias.some((p) => p.estado === 'parcial'));
+}
+
+/** Primer pedido corporativo con orden de compra que sigue incompleto (se ofrece sacarlo de la ronda). */
+export function corporativoIncompleto(r: Ronda): number {
+  return r.pedidos.findIndex((p) => p.corporativoOC && !pedidoCompleto(p));
 }
 
 /** La ronda puede cerrarse: todo resuelto y sin promociones incompletas. */
@@ -539,11 +685,20 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
       const p = partidaEn(s.ronda, ev.loc);
       return conPartida(s, ev.loc, { ...p, surtido: p.surtido + a.cantidad });
     }
-    case 'fijarSurtido': {
-      const loc = localizar(s.ronda, a.pedidoId, a.codigo);
+    case 'corregir': {
+      // Un pedido completo que queda incompleto se reabre solo: su partida vuelve a pedir el código.
+      const loc = partidaACorregir(s.ronda, a.codigo);
       if (!loc) return s;
+      return conPartida(s, loc, { ...partidaEn(s.ronda, loc), surtido: 0 });
+    }
+    case 'fijarCantidad': {
+      // Solo la partida sin negar del pedido indicado, con una cantidad válida (si no, el estado no cambia).
+      const pedidoIdx = s.ronda.pedidos.findIndex((p) => p.id === a.pedidoId);
+      const partidaIdx = pedidoIdx < 0 ? -1 : s.ronda.pedidos[pedidoIdx].partidas.findIndex((x) => x.codigo === a.codigo);
+      if (partidaIdx < 0) return s;
+      const loc = { pedidoIdx, partidaIdx };
       const p = partidaEn(s.ronda, loc);
-      if (evaluarCantidadAbsoluta(p, a.cantidad)) return s;
+      if (p.motivoNegacion !== null || evaluarCantidadDetalle(p, a.cantidad)) return s;
       return conPartida(s, loc, { ...p, surtido: a.cantidad });
     }
     case 'negar': {
@@ -568,23 +723,24 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
               ),
             },
       );
-      return { ronda: { ...s.ronda, pedidos } };
+      return { ...s, ronda: { ...s.ronda, pedidos } };
     }
+    case 'retirarPedido': {
+      // Solo sale el documento corporativo: los demás pedidos conservan lo surtido y su letra, y no entra
+      // ningún otro pedido en su lugar (la ronda es la que calculó el sistema al tomar la tarea).
+      if (!s.ronda.pedidos.some((p) => p.id === a.pedidoId)) return s;
+      return { ...s, ronda: { ...s.ronda, pedidos: s.ronda.pedidos.filter((p) => p.id !== a.pedidoId) } };
+    }
+    case 'cargar':
+      return { ronda: clonar(a.estado.ronda) };
     case 'reiniciar':
       return estadoInicial();
   }
-}
-
-function localizar(r: Ronda, pedidoId: string, codigo: string): UbicacionPartida | null {
-  const pedidoIdx = r.pedidos.findIndex((p) => p.id === pedidoId);
-  if (pedidoIdx < 0) return null;
-  const partidaIdx = r.pedidos[pedidoIdx].partidas.findIndex((p) => p.codigo === codigo);
-  return partidaIdx < 0 ? null : { pedidoIdx, partidaIdx };
 }
 
 function conPartida(s: RondaState, loc: UbicacionPartida, partida: PartidaPedido): RondaState {
   const pedidos = s.ronda.pedidos.map((p, i) =>
     i !== loc.pedidoIdx ? p : { ...p, partidas: p.partidas.map((x, j) => (j !== loc.partidaIdx ? x : partida)) },
   );
-  return { ronda: { ...s.ronda, pedidos } };
+  return { ...s, ronda: { ...s.ronda, pedidos } };
 }

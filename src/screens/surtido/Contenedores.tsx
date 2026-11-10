@@ -19,8 +19,7 @@ export const letraPedido = (idx: number) => String.fromCharCode(65 + idx);
 type Variante = 'normal' | 'invertido' | 'completo';
 
 /** Círculo con la letra del contenedor (azul; blanco sobre fondo azul; verde si está completo). */
-export function ContenedorLetra({ idx, variante = 'normal', size = 30 }: { idx: number; variante?: Variante; size?: number }) {
-  const letra = letraPedido(idx);
+export function ContenedorLetra({ letra, variante = 'normal', size = 30 }: { letra: string; variante?: Variante; size?: number }) {
   return (
     <span
       className={`${styles.letra} ${styles[variante]}`}
@@ -49,6 +48,7 @@ export function ContenedoresResumen({ pedidos, actualIdx }: { pedidos: Pedido[];
     <div className={styles.contenedores}>
       {pedidos.map((p, idx) => {
         const a = avancePedido(p);
+        const letra = p.contenedor ?? letraPedido(idx);
         const actual = idx === actualIdx && !a.completo;
         return (
           <div
@@ -57,7 +57,7 @@ export function ContenedoresResumen({ pedidos, actualIdx }: { pedidos: Pedido[];
             aria-current={actual ? 'step' : undefined}
           >
             <span className={styles.icono}>
-              <ContenedorLetra idx={idx} variante={actual ? 'invertido' : a.completo ? 'completo' : 'normal'} />
+              <ContenedorLetra letra={letra} variante={actual ? 'invertido' : a.completo ? 'completo' : 'normal'} />
               {a.completo && (
                 <span className={styles.insignia} aria-label="Completo">
                   ✓

@@ -3,9 +3,14 @@
  * Muestra la ronda asignada con sus N pedidos en el orden del algoritmo, uno por contenedor
  * (bloque "Pedidos" de la propuesta A). "Mismo cliente" se marca en el Detalle de la ronda.
  *
- * SDD multiorden-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
+ * SDD 2026-10-26-multiorden-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
  * (próximos a vencer) lo da el procesador de ordenamiento; la HH no reordena.
+ *
+ * SDD 2026-10-26-multiorden-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
+ * bandera de multi-orden: "Aceptar" enruta según las banderas de la sucursal (simuladas en la demo):
+ * listado de un pedido, Detalle de la ronda multi-orden, surtido anterior o inicio de sesión.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import userIcon from '@assets/icons/user.svg';
 import tareaIcon from '@assets/icons/user-tarea.svg';
@@ -21,14 +26,45 @@ import { LabeledField } from '@ds/components/molecules/LabeledField/LabeledField
 import { InfoBlock } from '@ds/components/molecules/InfoBlock/InfoBlock';
 import { EMPLEADO, TAREA } from '../../mocks/ronda';
 import { useStore } from '../../store/AppStore';
-import { letraPedido } from '../surtido/Contenedores';
+import { AvisoModal, TextoAviso } from '../surtido/overlays/Avisos';
+import { letraDe } from '../../domain/ronda';
 import styles from './AsignacionTareas.module.css';
 
 export function AsignacionTareas() {
   const navigate = useNavigate();
-  const { ronda } = useStore();
+  const { ronda, simulacion, mostrarToast, setEtapa } = useStore();
   const pedidos = ronda.ronda.pedidos;
   const total = pedidos.length;
+  const [sinProductos, setSinProductos] = useState(false);
+  // Solo una ronda multi-orden identifica cada pedido con la letra de su contenedor.
+  const multiorden = total > 1 && simulacion.multiordenEnHH;
+
+  const irAnterior = () => {
+    navigate('/surtido-anterior');
+  };
+
+  /** Enrutamiento de "Aceptar" con las banderas de la sucursal. */
+  const aceptar = () => {
+    if (simulacion.sinProductos || total === 0) {
+      return setSinProductos(true);
+    }
+    if (!simulacion.banderaListado) return irAnterior();
+    setEtapa('surtido');
+    if (total === 1) return navigate('/surtido');
+    const falla = simulacion.fallaBanderaMultiorden;
+    if (falla === 'sesion') {
+      return navigate('/login');
+    }
+    if (falla === 'conexion') {
+      mostrarToast({ kind: 'error', title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' });
+      return irAnterior();
+    }
+    if (falla === 'tiempo') {
+      return irAnterior();
+    }
+    if (!simulacion.multiordenEnHH) return irAnterior();
+    navigate('/ronda');
+  };
 
   return (
     <div className={styles.screen}>
@@ -73,7 +109,7 @@ export function AsignacionTareas() {
           title={TAREA.documentoLabel}
           icon={receiptIcon}
           iconSize={{ w: 13.482, h: 17.159 }}
-          rows={pedidos.map((p, idx) => ({ label: `Contenedor ${letraPedido(idx)}`, value: p.id }))}
+          rows={pedidos.map((p, idx) => ({ label: multiorden ? `Contenedor ${letraDe(ronda.ronda, idx)}` : 'Pedido', value: p.id }))}
         />
       </ContentPanel>
       <BottomBar>
@@ -84,10 +120,15 @@ export function AsignacionTareas() {
             icon="check"
             label="Aceptar"
             className={styles.half}
-            onClick={() => navigate('/ronda')}
+            onClick={aceptar}
           />
         </div>
       </BottomBar>
+      {sinProductos && (
+        <AvisoModal titulo="Error" tipo="error" botones={[{ label: 'Aceptar', onClick: () => setSinProductos(false) }]}>
+          <TextoAviso>Lo sentimos, no ha sido posible cargar la información necesaria. Por favor, regresa al menú principal.</TextoAviso>
+        </AvisoModal>
+      )}
     </div>
   );
 }

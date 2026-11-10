@@ -61,18 +61,33 @@
   line-height: normal;
 }
 
-.varianteChip {
+/* "Corregir {letra}" — corrección en escalera (2026-11-09), sin nodo en Figma. Contorno azul como el
+   botón contorno del design-system (4582:23666), a la altura de una fila del desglose. */
+.corregir {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-var-revision-en-surtido-amarillo);
-  color: var(--color-negro);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  justify-content: center;
+  min-width: 112px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-primary-azul-300);
+  border-radius: 5px;
+  background: var(--color-blanco);
+  color: var(--color-primary-azul-300);
+  font: 700 14px/normal var(--font-family-roboto);
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.corregir:not(:disabled):active {
+  background: var(--color-primary-azul-0);
+}
+
+.corregir:disabled {
+  border-color: var(--color-divider);
+  color: var(--color-inactive-text);
+  cursor: default;
 }
 
 .presencias {
@@ -181,22 +196,42 @@
   justify-content: flex-end;
 }
 
+/* Cantidad del pedido en surtido: el stepper es solo informativo (clarify 18), con + y − inhabilitados.
+   El Stepper del design-system no atenúa sus íconos: se hace aquí para no tocarlo. */
+/* "Cantidad surtida" (SpinnerInput del V2): 160 px en la fila del pedido en surtido. */
+.cantidadSurtida {
+  flex: 0 0 160px;
+  width: 160px;
+}
+
+.cantidadInput {
+  width: 100%;
+  border: none;
+  text-align: center;
+  outline: none;
+}
+
+.cantidadInput:focus {
+  box-shadow: inset 0 0 0 2px var(--color-primary-azul-300);
+}
+
+/* Inhabilitada (el pedido entró al detalle sin piezas): − y + en gris y la cantidad atenuada. */
+.cantidadSurtida button:disabled img {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.cantidadInhabilitada .cantidadInput {
+  background: var(--color-inactive);
+  color: var(--color-inactive-text);
+}
+
 .consulta {
   width: 100%;
   margin: 0;
   color: var(--color-inactive-text);
   font: var(--font-b1-body);
   line-height: normal;
-}
-
-/* Lector dentro del detalle (FR-015) — añadido propio, no está en Figma.
-   El ScanInput está pensado para la barra inferior blanca, así que aquí va sobre blanco:
-   un relleno azul lo sacaba del lenguaje del design-system. */
-.lector {
-  display: flex;
-  width: 100%;
-  padding-top: 4px;
-  border-top: 1px solid var(--color-divider);
 }
 
 .flex1 {

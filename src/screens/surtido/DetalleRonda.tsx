@@ -4,7 +4,7 @@
  * en la propuesta A de `Solicitud anticipada Uber` (rama feature-surtido-multipedido).
  *
  * Un panel por contenedor: letra, piezas y códigos del pedido, folio y cliente; "Mismo cliente" cuando el
- * cliente se repite en la ronda (FR-003). Diferencia con la referencia: no se muestra la hora de captura
+ * cliente se repite en la ronda (FR-003) y `Bandera_MultiordenMismoCliente` está activa (simulada en la demo). Diferencia con la referencia: no se muestra la hora de captura
  * porque el modelo de la ronda no la trae.
  */
 import { useNavigate } from 'react-router-dom';
@@ -14,16 +14,17 @@ import { AppHeader } from '@ds/components/organisms/AppHeader/AppHeader';
 import { ContentPanel } from '@ds/components/organisms/ContentPanel/ContentPanel';
 import { BottomBar } from '@ds/components/organisms/BottomBar/BottomBar';
 import { Button } from '@ds/components/atoms/Button/Button';
-import { clientesRepetidos } from '../../domain/ronda';
+import { clientesRepetidos, letraDe } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
-import { ContenedorLetra, letraPedido } from './Contenedores';
+import { ContenedorLetra } from './Contenedores';
 import styles from './DetalleRonda.module.css';
 
 export function DetalleRonda() {
   const navigate = useNavigate();
-  const { ronda } = useStore();
+  const { ronda, simulacion } = useStore();
   const pedidos = ronda.ronda.pedidos;
-  const compartido = clientesRepetidos(pedidos);
+  // Con la bandera inactiva ningún panel lleva "Mismo cliente".
+  const compartido = simulacion.mismoCliente ? clientesRepetidos(pedidos) : new Set<string>();
 
   return (
     <div className={styles.screen}>
@@ -33,9 +34,9 @@ export function DetalleRonda() {
           {pedidos.map((p, idx) => {
             const piezas = p.partidas.reduce((n, x) => n + x.solicitado, 0);
             return (
-              <section key={p.id} className={styles.panel} aria-label={`Contenedor ${letraPedido(idx)}`}>
+              <section key={p.id} className={styles.panel} aria-label={`Contenedor ${letraDe(ronda.ronda, idx)}`}>
                 <div className={styles.encabezado}>
-                  <ContenedorLetra idx={idx} />
+                  <ContenedorLetra letra={letraDe(ronda.ronda, idx)} />
                   <div className={styles.totales}>
                     <b>{piezas} pz</b>
                     <span>

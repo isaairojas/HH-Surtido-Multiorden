@@ -10,10 +10,9 @@
  */
 import { useState } from 'react';
 import { etiqueta } from '../domain/codigos';
-import { CONFIG_MULTIORDEN_DEFAULT } from '../domain/configMultiorden';
-import { ordenarPorFamilia, partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
+import { agrupaPorFamilia } from '../domain/simulacion';
+import { letraDe, ordenarPorFamilia, partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
 import { useStore } from '../store/AppStore';
-import { letraPedido } from '../screens/surtido/Contenedores';
 import styles from './CodigosCheatsheet.module.css';
 
 /** Código de 7 dígitos que no vive en la ronda, para probar el rechazo de FR-011. */
@@ -47,12 +46,12 @@ async function alPortapapeles(texto: string): Promise<boolean> {
 }
 
 export function CodigosCheatsheet() {
-  const { ronda } = useStore();
+  const { ronda, simulacion } = useStore();
   const [copiado, setCopiado] = useState<string | null>(null);
 
   // Mismo orden que la lista de surtido.
   const vista = productosVista(ronda.ronda);
-  const productos = CONFIG_MULTIORDEN_DEFAULT.agruparPorFamilia ? ordenarPorFamilia(vista) : vista;
+  const productos = agrupaPorFamilia(simulacion) ? ordenarPorFamilia(vista) : vista;
 
   const copiar = async (texto: string, marca: string) => {
     if (!(await alPortapapeles(texto))) return;
@@ -138,7 +137,7 @@ export function CodigosCheatsheet() {
                   <li key={p.pedidoId} className={styles.presencia}>
                     <span className={styles.presenciaPedido}>
                       {pedidoDestino?.id === p.pedidoId && <span className={styles.flecha}>▸</span>}
-                      {letraPedido(p.ordenPedido)} · Pedido {p.pedidoId}
+                      {p.contenedor} · Pedido {p.pedidoId}
                     </span>
                     <span className={`${styles.presenciaChip} ${styles[statusDeEstado(p.estado)]}`}>
                       {p.motivoNegacion ? `Negado · ${p.motivoNegacion}` : `${p.surtido}/${p.solicitado}`}
@@ -150,7 +149,7 @@ export function CodigosCheatsheet() {
               <p className={styles.destino}>
                 {pedidoDestino ? (
                   <>
-                    Próximo escaneo → <b>{letraPedido(destino!.pedidoIdx)} · pedido {pedidoDestino.id}</b> (le faltan {faltan})
+                    Próximo escaneo → <b>{letraDe(ronda.ronda, destino!.pedidoIdx)} · pedido {pedidoDestino.id}</b> (le faltan {faltan})
                   </>
                 ) : (
                   <>Sin partidas pendientes: el escaneo se rechaza.</>

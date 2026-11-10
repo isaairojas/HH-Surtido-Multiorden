@@ -16,6 +16,7 @@ import {
   estadoPartida,
   evaluarSurtido,
   pedidoCompleto,
+  partidaACorregir,
   partidasANegar,
   productosVista,
   productoVista,
@@ -79,11 +80,13 @@ test('un código ajeno a la ronda se rechaza sin tocar el estado', () => {
   assert.deepEqual(surtir(inicial, '9999999', 1), inicial);
 });
 
-test('un código cuyas partidas están todas completas se rechaza igual que uno ajeno', () => {
+test('un código ya surtido en todos sus pedidos es sobrante: "mayor a la solicitada", como hoy', () => {
   const lleno = completarTodo(estadoInicial());
   const ev = evaluarSurtido(lleno.ronda, '1394010', 1);
   assert.equal(ev.ok, false);
-  assert.equal(ev.rechazo, 'fuera-de-ronda');
+  assert.equal(ev.rechazo, 'excede-solicitado');
+  assert.equal(evaluarSurtido(lleno.ronda, '1394010', 0).rechazo, 'cantidad-cero');
+  assert.deepEqual(surtir(lleno, '1394010', 1), lleno);
 });
 
 test('cantidad cero se rechaza', () => {
@@ -254,20 +257,85 @@ test('la ronda se cierra solo cuando todos los pedidos están resueltos', () => 
 });
 
 /* ---------------------------------------------------------------- *
- * Stepper del detalle y reinicio
+ * SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido (escalera)
  * ---------------------------------------------------------------- */
 
-test('fijarSurtido establece la cantidad absoluta de la partida indicada', () => {
-  const s = rondaReducer(estadoInicial(), { type: 'fijarSurtido', pedidoId: '100002', codigo: '1394010', cantidad: 3 });
-  assert.equal(partida(s, '100002', '1394010').surtido, 3);
-  assert.equal(partida(s, '100001', '1394010').surtido, 0);
+const corregir = (s, codigo) => rondaReducer(s, { type: 'corregir', codigo });
+
+/** Cinta 1394010 (misceláneo) en A 11/11, B 5/5 y C 2/3; el resto de A y B, completo. */
+function cintaParaCorregir() {
+  const s = completarTodo(estadoInicial(), (x, p) => p.id === '100003');
+  return surtir(s, '1394010', 2);
+}
+
+const avanceCinta = (s) => ['100001', '100002', '100003'].map((id) => partida(s, id, '1394010').surtido);
+
+test('corregir regresa a 0 solo el último pedido con piezas del código', () => {
+  const s = cintaParaCorregir();
+  assert.deepEqual(avanceCinta(s), [11, 5, 2]);
+  const c = corregir(s, '1394010');
+  assert.deepEqual(avanceCinta(c), [11, 5, 0], 'A y B no cambian');
+  assert.equal(partidaACorregir(c.ronda, '1394010').pedidoId, '100002', 'el botón pasa a "Corregir B"');
 });
 
-test('fijarSurtido ignora cantidades que exceden lo solicitado o la existencia', () => {
-  const inicial = estadoInicial();
-  assert.deepEqual(rondaReducer(inicial, { type: 'fijarSurtido', pedidoId: '100001', codigo: '1394010', cantidad: 99 }), inicial);
-  assert.deepEqual(rondaReducer(inicial, { type: 'fijarSurtido', pedidoId: '100002', codigo: '6200404', cantidad: 2 }), inicial);
+test('el botón corrige el pedido en curso mientras tenga piezas', () => {
+  // C (en curso) tiene 2 piezas: "Corregir C", aunque B esté completo.
+  assert.equal(partidaACorregir(cintaParaCorregir().ronda, '1394010').pedidoId, '100003');
 });
+
+test('con el pedido en curso en 0, el botón corrige el anterior con piezas', () => {
+  // A y B completos y C (en curso) sin surtir todavía: "Corregir B".
+  const s = completarTodo(estadoInicial(), (x, p) => p.id === '100003');
+  assert.equal(partidaACorregir(s.ronda, '1394010').pedidoId, '100002');
+});
+test('tras corregir, el siguiente escaneo vuelve a entrar al pedido corregido', () => {
+  const c = surtir(corregir(cintaParaCorregir(), '1394010'), '1394010', 1);
+  assert.deepEqual(avanceCinta(c), [11, 5, 1]);
+});
+
+test('corregir el anterior reabre un pedido completo, y así hasta el primero', () => {
+  const s = corregir(corregir(cintaParaCorregir(), '1394010'), '1394010');
+  assert.deepEqual(avanceCinta(s), [11, 0, 0]);
+  assert.equal(pedidoCompleto(s.ronda.pedidos[1]), false, 'el 100002 vuelve a quedar pendiente');
+  assert.equal(partidaACorregir(s.ronda, '1394010').pedidoId, '100001', 'el botón pasa a "Corregir A"');
+  const a = corregir(s, '1394010');
+  assert.deepEqual(avanceCinta(a), [0, 0, 0]);
+  assert.equal(partidaACorregir(a.ronda, '1394010'), null, '"Corregir" queda deshabilitado');
+});
+
+test('si solo el primer pedido tiene piezas, se corrige ese', () => {
+  const s = corregir(surtir(estadoInicial(), '1394010', 4), '1394010');
+  assert.equal(partida(s, '100001', '1394010').surtido, 0);
+  assert.equal(partidaACorregir(s.ronda, '1394010'), null);
+});
+
+test('un pedido reabierto se vuelve a completar y se detecta otra vez su cierre', () => {
+  const reabierto = corregir(corregir(cintaParaCorregir(), '1394010'), '1394010');
+  const despues = surtir(reabierto, '1394010', 5);
+  assert.equal(partida(despues, '100002', '1394010').surtido, 5);
+  const t = transicionDePedido(reabierto.ronda, despues.ronda);
+  assert.equal(t.completado.id, '100002');
+  assert.equal(t.siguiente.id, '100003');
+});
+
+test('la corrección salta los pedidos sin piezas y los negados', () => {
+  // 2012000: B completo (3) y C negado; se corrige B.
+  const s = negar(surtir(estadoInicial(), '2012000', 3), '2012000');
+  assert.equal(partidaACorregir(s.ronda, '2012000').pedidoId, '100002');
+  const c = corregir(s, '2012000');
+  assert.equal(partida(c, '100002', '2012000').surtido, 0);
+  assert.equal(partida(c, '100003', '2012000').motivoNegacion, 'Sin existencia', 'la negación de C se conserva');
+});
+
+test('sin piezas surtidas no hay nada que corregir', () => {
+  const inicial = estadoInicial();
+  assert.equal(partidaACorregir(inicial.ronda, '1394010'), null);
+  assert.deepEqual(corregir(inicial, '1394010'), inicial);
+});
+
+/* ---------------------------------------------------------------- *
+ * Reinicio
+ * ---------------------------------------------------------------- */
 
 test('reiniciar devuelve la ronda a su estado original', () => {
   const avanzado = surtir(estadoInicial(), '1394010', 11);
@@ -281,7 +349,7 @@ test('el estado inicial no comparte partidas con el mock entre llamadas', () => 
 });
 
 /* ---------------------------------------------------------------- *
- * SDD multiorden-surtido-listado · Avisos de cambio de pedido
+ * SDD 2026-10-26-multiorden-surtido-listado · Avisos de cambio de pedido
  * ---------------------------------------------------------------- */
 
 test('cambioDePedido detecta cuando las siguientes piezas del código van a otro pedido', () => {
@@ -303,7 +371,7 @@ test('sin cambio de destino, o sin destino, no hay aviso', () => {
 });
 
 /* ---------------------------------------------------------------- *
- * SDD multiorden-surtido-listado · Promoción incompleta al finalizar la ronda
+ * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda
  * ---------------------------------------------------------------- */
 
 /** Todo surtido salvo el limpiador del 100002, negada: su "Kit mantenimiento" queda incompleto. */
@@ -349,7 +417,7 @@ test('negar una promoción que no está pendiente no cambia nada', () => {
 });
 
 /* ---------------------------------------------------------------- *
- * SDD surtido-listado-imagen-familia — agrupación por familia
+ * SDD 2026-10-26-surtido-listado-imagen-familia — agrupación por familia
  * ---------------------------------------------------------------- */
 
 test('la agrupación por familia ordena las familias alfabéticamente', () => {
@@ -362,11 +430,12 @@ test('la agrupación por familia ordena las familias alfabéticamente', () => {
   assert.deepEqual(bloques, ['Bomba gasolina', 'Cinta', 'Foco', 'Limpiador', 'Relevador']);
 });
 
-test('dentro de una familia se conserva la secuencia de picking', () => {
+test('dentro de una familia los códigos van de menor a mayor (regla del 2026-11-09)', () => {
   const base = productosVista(estadoInicial().ronda);
-  const focosAntes = base.filter((x) => x.familia === 'Foco').map((x) => x.codigo);
-  const focosDespues = ordenarPorFamilia(base).filter((x) => x.familia === 'Foco').map((x) => x.codigo);
-  assert.deepEqual(focosDespues, focosAntes);
-  assert.deepEqual(focosDespues, ['2012000', '1978000', '2010000']);
+  // En la secuencia de picking llegan 2012000, 1978000, 2010000…
+  assert.deepEqual(base.filter((x) => x.familia === 'Foco').map((x) => x.codigo), ['2012000', '1978000', '2010000']);
+  // …y el listado agrupado los muestra de menor a mayor.
+  const focos = ordenarPorFamilia(base).filter((x) => x.familia === 'Foco').map((x) => x.codigo);
+  assert.deepEqual(focos, ['1978000', '2010000', '2012000']);
 });
 

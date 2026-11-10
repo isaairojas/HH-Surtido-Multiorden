@@ -81,3 +81,20 @@ img {
     padding-left: 464px; /* 440 de la hoja de códigos + 24 de su margen */
   }
 }
+
+/*
+ * Con la explicación del escenario abierta (clase en #root, la pone EscenariosPanel), a la derecha van dos
+ * columnas: explicación (400) y lista (380). Desde 1280 px se reserva el espacio de las dos; antes, la
+ * explicación cubre la lista. La hoja de códigos de la izquierda solo cabe junto con todo desde 1740 px.
+ */
+@media (min-width: 1280px) {
+  #root.con-explicacion {
+    padding-right: 820px; /* 24 + 400 + 16 + 380 */
+  }
+}
+
+@media (min-width: 1500px) and (max-width: 1739px) {
+  #root.con-explicacion {
+    padding-left: 0;
+  }
+}

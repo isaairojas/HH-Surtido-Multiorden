@@ -4,11 +4,16 @@
  * en vez de un pedido se resumen los N pedidos y los productos únicos de toda la ronda.
  * No tiene respaldo en Figma (ver FIGMA_REPLICA.md): se compone con tokens y organismos existentes.
  *
- * Mejoras SDD antes y después de esta pantalla:
- *   - SDD multiorden-surtido-listado · Sacar el pedido de la ronda: corporativo incompleto al
+ * SDD 2026-10-26-multiorden-surtido-listado · Finalizar el surtido del pedido: se llega aquí después de confirmar,
+ * registrar cada pedido y guardar la ronda una vez; muestra "¡Se completó la ronda de surtido exitosamente!"
+ * (texto de hoy) y regresa al menú.
+ *
+ * Antes de esta pantalla:
+ *   - SDD 2026-10-26-multiorden-surtido-listado · Sacar el pedido de la ronda: corporativo incompleto al
  *     finalizar → se ofrece sacarlo; se vuelve al listado sin él y con los totales recalculados.
- *   - SDD multiorden-revision-por-pedido: la revisión sigue pedido por pedido, en este orden, solo
- *     con estos pedidos; facturación y embarque por pedido, unificando solo mismo cliente y dirección.
+ *
+ * Después: la revisión, la facturación y el embarque siguen como hoy. Los del multi-orden se trabajarán
+ * después de la liberación de los cambios de Víctor Limón (decisión del 2026-11-10).
  */
 import { useNavigate } from 'react-router-dom';
 import completadoIcon from '@assets/icons/estado-completado.svg';
@@ -20,22 +25,23 @@ import { BottomBar } from '@ds/components/organisms/BottomBar/BottomBar';
 import { Button } from '@ds/components/atoms/Button/Button';
 import { Chip } from '@ds/components/atoms/Chip/Chip';
 import { Divider } from '@ds/components/atoms/Divider/Divider';
-import { conteosRonda, pedidoCompleto, rondaCompleta, statusPartida } from '../../domain/ronda';
+import { conteosRonda, hayCodigosSinSurtir, pedidoCompleto, statusPartida } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
 import styles from './RondaTerminada.module.css';
 
 export function RondaTerminada() {
   const navigate = useNavigate();
-  const { ronda, dispatch, setEtapa, setUltimoEscaneo } = useStore();
+  const { ronda, dispatch, setEtapa, setUltimoEscaneo, tareaOriginal } = useStore();
   const c = conteosRonda(ronda.ronda);
   const pedidos = ronda.ronda.pedidos;
-  // En el flujo normal solo se llega aquí con la ronda cerrada, pero a la pantalla se puede
-  // entrar por URL para la demo: el titular dice lo que el estado realmente es.
-  const completa = rondaCompleta(ronda.ronda);
+  // Se llega aquí al finalizar, también con parciales confirmados (el aviso de parciales es la confirmación,
+  // clarify del 2026-11-09): eso ya es surtido finalizado. Solo una entrada directa por URL con códigos en 0
+  // sin negar muestra la ronda con pendientes.
+  const completa = !hayCodigosSinSurtir(ronda.ronda);
 
   const volverAlMenu = () => {
-    // La ronda queda cerrada: la bandeja arranca de nuevo con una ronda limpia (FR-020).
-    dispatch({ type: 'reiniciar' });
+    // La ronda queda cerrada: en la demo, la bandeja vuelve a ofrecer la misma tarea tal como llegó.
+    dispatch({ type: 'cargar', estado: tareaOriginal });
     // La ronda nueva arranca sin pedido marcado.
     setUltimoEscaneo(null);
     setEtapa('tareas');
@@ -49,11 +55,21 @@ export function RondaTerminada() {
         <div className={styles.body}>
           <div className={`${styles.hero} ${completa ? '' : styles.heroPendiente}`}>
             <img src={completa ? completadoIcon : parcialIcon} alt="" width={48} height={48} />
-            <p className={styles.heroTitulo}>{completa ? '¡Ronda completada!' : 'Ronda con pendientes'}</p>
+            <p className={styles.heroTitulo}>{completa ? 'Surtido finalizado' : 'Ronda con pendientes'}</p>
             <p className={styles.heroTexto}>
               {completa ? (
                 <>
-                  Se procesaron los {pedidos.length} pedidos de la ronda <b>{ronda.ronda.id}</b>.
+                  ¡Se completó la ronda de surtido exitosamente!
+                  <br />
+                  {pedidos.length === 1 ? (
+                    <>
+                      Se registró el pedido <b>{pedidos[0].id}</b>.
+                    </>
+                  ) : (
+                    <>
+                      Se registraron los {pedidos.length} pedidos de la ronda <b>{ronda.ronda.id}</b>.
+                    </>
+                  )}
                 </>
               ) : (
                 <>

@@ -5,74 +5,85 @@
  * Añadidos propios del multi-orden, sin respaldo en Figma (FIGMA_REPLICA.md):
  * - Desglose por pedido (FR-013): una fila por cada pedido donde vive el código,
  *   con su progreso individual y el motivo cuando está negado.
- * - El stepper y el lector actúan sobre la partida destino: el pedido con menor
- *   orden que todavía necesita el código (FR-015/FR-016), señalado en la etiqueta.
+ * - El pedido en surtido es el de menor orden que todavía necesita el código (FR-015/FR-016), señalado con
+ *   "Surtiendo".
  *
- * Variantes (FR-014), replicando Revision-HH-v2:
- * - escaneable: lector + captura manual con el stepper.
- * - misceláneo: sin campo de lector; solo el stepper.
- * - negado: stepper bloqueado y "Negar producto" inhabilitado; se muestra el motivo.
+ * Cantidad (clarify del 2026-11-09, fila 28, sustituye a la 18): como el V2 hoy (`ProductDetail`). El detalle no
+ * tiene lector: se surte desde el listado. La fila del pedido en surtido lleva "Cantidad surtida" (− / + y
+ * captura a mano), inhabilitada si ese pedido no tiene piezas del código; con piezas se ajusta hasta lo
+ * solicitado y se valida al regresar (cero, mayor a la solicitada, mayor a la existencia). Igual para todos los
+ * productos; sin marca "Misceláneo" (fila 7). Negado: "Negar producto" inhabilitado y se muestra el motivo.
  *
- * Negar (SDD multiorden-surtido-listado · Negar producto desde el detalle): niega el pedido en
+ * Corrección en escalera (SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido,
+ * filas 9-18): la cantidad solo baja corrigiendo. "Corregir {letra}" apunta al último pedido con piezas del
+ * código (el en curso o, si está en 0, el anterior) y pide confirmación con `ConfirmarCorreccionModal`; al
+ * aceptar, ese pedido queda en 0 y el botón pasa al anterior.
+ *
+ * Negar (SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el detalle): niega el pedido en
  * proceso y todos los posteriores, retirando lo surtido; el modal lista los pedidos afectados.
  *
- * Indicadores del desglose (SDD multiorden-surtido-listado · Desglose por pedido en el detalle,
- * sesión del 2026-10-27): el pedido que se está surtiendo lleva barra y etiqueta rojas; los demás
- * van en gris, como inhabilitados. El chip conserva el color de su estatus (completo en verde).
+ * Indicadores del desglose (SDD 2026-10-26-multiorden-surtido-listado · Desglose por pedido en el detalle): el pedido
+ * que se está surtiendo va resaltado en azul con "Surtiendo" (era rojo hasta el 2026-11-02); los demás van en
+ * gris, como inhabilitados. El chip conserva el color de su estatus (completo en verde).
  * Cuando el surtido pasa el código a otro pedido se avisa con `CambioPedidoModal`.
+ *
+ * Si la cantidad que se guarda completa el pedido y el código sigue en otro, las siguientes piezas van a ese
+ * otro pedido: se avisa con "Pedido surtido" antes de regresar.
  *
  * El aviso de pedido completado y el cierre de la ronda no se resuelven aquí: los
  * detecta `SurtidoRonda` al volver a la lista, mirando el estado del store.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppHeader } from '@ds/components/organisms/AppHeader/AppHeader';
 import { ContentPanel } from '@ds/components/organisms/ContentPanel/ContentPanel';
 import { BottomBar } from '@ds/components/organisms/BottomBar/BottomBar';
 import { Button } from '@ds/components/atoms/Button/Button';
 import { Chip } from '@ds/components/atoms/Chip/Chip';
-import { Stepper } from '@ds/components/atoms/Stepper/Stepper';
 import { Divider } from '@ds/components/atoms/Divider/Divider';
 import { LabeledField } from '@ds/components/molecules/LabeledField/LabeledField';
 import { ProductSummary } from '@ds/components/molecules/ProductSummary/ProductSummary';
-import { ScanInput } from '@ds/components/molecules/ScanInput/ScanInput';
-import { leerCodigo } from '../../domain/codigos';
 import { sonar } from '../../domain/sonidos';
 import {
   AVISOS,
   cambioDePedido,
-  evaluarCantidadAbsoluta,
-  evaluarSurtido,
+  esMultiorden,
+  evaluarCantidadDetalle,
+  partidaACorregir,
   partidaEn,
   partidasANegar,
+  piezasEn,
   productoVista,
   proximaPartidaPara,
   rondaReducer,
   statusDeEstado,
-  type RondaAction,
+  type RechazoSurtido,
 } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
-import { CambioPedidoModal, CantidadModal, NegarProductoModal } from './overlays/SurtidoModals';
+import { CambioPedidoModal, ConfirmarCorreccionModal, NegarProductoModal } from './overlays/SurtidoModals';
+import { AvisoModal, ConNegritas, TextoAviso } from './overlays/Avisos';
 import { ContenedorLetra } from './Contenedores';
+import { CantidadSurtida } from './CantidadSurtida';
 import styles from './DetalleProducto.module.css';
 
-const TOAST_CODIGO_DISTINTO = {
-  kind: 'error' as const,
-  title: 'Código inválido',
-  message: 'El código escaneado no corresponde al producto que estás viendo.',
-};
 
 export function DetalleProducto() {
   const { codigo = '' } = useParams();
   const navigate = useNavigate();
-  const { ronda, dispatch, mostrarToast, setUltimoEscaneo } = useStore();
+  const { ronda, dispatch, mostrarToast, setUltimoEscaneo, simulacion } = useStore();
   const [negando, setNegando] = useState(false);
-  const [capturando, setCapturando] = useState(false);
-  const [cambio, setCambio] = useState<{ desde: string; hacia: string; ordenHacia: number } | null>(null);
+  /** "Pedido surtido" al guardar una cantidad que pasa el código a otro pedido; con "Entendido" se regresa. */
+  const [cambio, setCambio] = useState<{ desde: string; contenedor: string; cantidad: number } | null>(null);
+  /** Negación bloqueada por una restricción de hoy (pedido único con piezas, corporativo con orden de compra). */
+  const [negacionBloqueada, setNegacionBloqueada] = useState<'con-piezas' | 'corporativo' | null>(null);
+  /** "Corrección de surtido" abierta, esperando "Aceptar" o "Rechazar". */
+  const [confirmandoCorreccion, setConfirmandoCorreccion] = useState(false);
 
   const vista = productoVista(ronda.ronda, codigo);
   const destino = proximaPartidaPara(ronda.ronda, codigo);
   const aNegar = partidasANegar(ronda.ronda, codigo);
+  // Pedido que corrige el botón: el en curso si tiene piezas; si está en 0, el anterior con piezas.
+  const aCorregir = partidaACorregir(ronda.ronda, codigo);
 
   // Ruta con un código que no vive en la ronda: se vuelve a la lista en vez de romper.
   if (!vista) {
@@ -82,61 +93,72 @@ export function DetalleProducto() {
 
   const partidaDestino = destino ? partidaEn(ronda.ronda, destino) : null;
   const pedidoDestino = destino ? ronda.ronda.pedidos[destino.pedidoIdx] : null;
-
-  const volver = () => navigate('/surtido');
+  const surtidoGuardado = partidaDestino?.surtido ?? 0;
 
   /**
-   * Despacha y avisa si las siguientes piezas del código ya van a otro pedido. Aquí se avisa
-   * aunque el pedido se haya cerrado: el aviso de pedido completado sale hasta volver a la lista.
+   * "Cantidad surtida" del pedido en surtido. Vive en la pantalla y se guarda al regresar, como el V2. Si cambia
+   * lo guardado (corregir) o el pedido en surtido, vuelve a lo guardado.
    */
-  const aplicar = (accion: RondaAction) => {
-    const c = cambioDePedido(ronda.ronda, rondaReducer(ronda, accion).ronda, codigo);
-    dispatch(accion);
-    if (c) setCambio({ desde: c.desde.id, hacia: c.hacia.id, ordenHacia: c.ordenHacia });
-  };
+  const [cantidad, setCantidad] = useState(surtidoGuardado);
+  useEffect(() => setCantidad(surtidoGuardado), [pedidoDestino?.id, surtidoGuardado]);
 
-  const rechazar = (rechazo: keyof typeof AVISOS) => {
+  const irAlListado = () => navigate('/surtido');
+
+  const rechazar = (rechazo: RechazoSurtido) => {
     sonar('error');
     mostrarToast({ kind: 'error', ...AVISOS[rechazo] });
   };
 
-  /** Stepper: fija la cantidad absoluta de la partida destino, como el detalle de Revision-HH-v2. */
-  const cambiarCantidad = (n: number) => {
-    if (!partidaDestino || !pedidoDestino) return;
-    const rechazo = evaluarCantidadAbsoluta(partidaDestino, n);
+  /** "Aceptar" de "Corrección de surtido": el pedido queda en 0 y se regresa al detalle. */
+  const corregir = () => {
+    setConfirmandoCorreccion(false);
+    if (!aCorregir) return;
+    dispatch({ type: 'corregir', codigo });
+    // El pedido corregido es a donde va el próximo escaneo del código: la lista lo marca.
+    setUltimoEscaneo({ codigo, pedidoId: aCorregir.pedidoId });
+  };
+
+  /**
+   * "Regresar" (o la flecha): sin cambios, solo vuelve. Con una cantidad distinta, la valida como el V2 y, si es
+   * válida, la guarda en el pedido en surtido; si no, avisa y se queda. Si con ella el pedido completa el código y
+   * otro pedido todavía lo necesita, avisa "Pedido surtido" antes de regresar.
+   */
+  const volver = () => {
+    if (!partidaDestino || !pedidoDestino || cantidad === surtidoGuardado) return irAlListado();
+    const rechazo = evaluarCantidadDetalle(partidaDestino, cantidad);
     if (rechazo) return rechazar(rechazo);
-    setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
-    aplicar({ type: 'fijarSurtido', pedidoId: pedidoDestino.id, codigo, cantidad: n });
-  };
-
-  /** Suma una cantidad al pedido destino con las validaciones de Revision-HH-v2. */
-  const surtir = (cantidad: number) => {
-    const ev = evaluarSurtido(ronda.ronda, codigo, cantidad);
-    if (!ev.ok) return rechazar(ev.rechazo);
+    const accion = { type: 'fijarCantidad', codigo, pedidoId: pedidoDestino.id, cantidad } as const;
+    const c = cambioDePedido(ronda.ronda, rondaReducer(ronda, accion).ronda, codigo);
+    dispatch(accion);
     sonar('ok');
-    if (pedidoDestino) setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
-    aplicar({ type: 'surtirPorCodigo', codigo, cantidad });
+    setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
+    if (c) return setCambio({ desde: c.desde.id, contenedor: c.letraDesde, cantidad: piezasEn(c.desde, codigo) });
+    irAlListado();
   };
 
-  /** Lector dentro del detalle: solo acepta el código que se está viendo (FR-015). */
-  const onScan = (valor: string) => {
-    const l = leerCodigo(valor);
-    if (l.tipo === 'invalido') return sonar('error');
-    if (l.codigo !== codigo) {
-      sonar('error');
-      return mostrarToast(TOAST_CODIGO_DISTINTO);
-    }
-    // Código corto: la cantidad se captura a mano (Revision-HH-v2 abre el bottom sheet).
-    if (l.tipo === 'codigo') return setCapturando(true);
-    surtir(l.cantidad);
+  /**
+   * "Negar producto". Con un solo pedido se conservan las restricciones de hoy (cantidad surtida en 0 y
+   * corporativo con orden de compra). En la ronda multi-orden ya no se exige el 0 (la cascada retira lo
+   * surtido), pero un corporativo con orden de compra entre los afectados bloquea la negación de todos.
+   * SDD 2026-10-26-multiorden-surtido-listado · Restricciones para negar.
+   */
+  const pedirNegacion = () => {
+    const pedidos = ronda.ronda.pedidos;
+    if (aNegar.some((a) => pedidos[a.pedidoIdx]?.corporativoOC)) return setNegacionBloqueada('corporativo');
+    if (!esMultiorden(ronda.ronda) && aNegar.some((a) => a.surtido > 0)) return setNegacionBloqueada('con-piezas');
+    setNegando(true);
   };
 
   const negar = (motivo: string) => {
-    dispatch({ type: 'negar', codigo, motivo });
     setNegando(false);
+    if (simulacion.fallaNegar) {
+      sonar('error');
+      return mostrarToast({ kind: 'error', title: 'Error', message: 'Ocurrió un error al negar el producto, por favor intenta de nuevo.' });
+    }
+    dispatch({ type: 'negar', codigo, motivo });
     const pedidos = aNegar.map((a) => a.pedidoId).join(', ');
     mostrarToast({ kind: 'error', title: 'Producto negado', message: `${codigo} negado en ${pedidos} por: ${motivo}` });
-    volver();
+    irAlListado();
   };
 
   const [planta, pasillo, torre, nivel] = vista.ubicacion;
@@ -176,13 +198,17 @@ export function DetalleProducto() {
           </div>
 
           {/* Surtido por pedido — FR-013. Interfaz de 41:2429 (propuesta A): una fila por contenedor.
-              Solo la fila del pedido que se está surtiendo lleva stepper; las demás quedan en gris. */}
+              La fila del pedido que se está surtiendo lleva "Cantidad surtida" como el V2 (clarify 28); las demás
+              quedan en gris. */}
           <section className={styles.desglose} aria-labelledby="surtido-por-pedido">
             <div className={styles.desgloseHead}>
               <h3 id="surtido-por-pedido" className={styles.desgloseTitulo}>
                 Surtido por pedido
               </h3>
-              {vista.miscelaneo && <span className={styles.varianteChip}>Misceláneo</span>}
+              {/* La letra dice qué contenedor vuelve a 0; sin piezas surtidas no hay nada que corregir. */}
+              <button type="button" className={styles.corregir} disabled={!aCorregir} onClick={() => setConfirmandoCorreccion(true)}>
+                {aCorregir ? `Corregir ${aCorregir.contenedor}` : 'Corregir'}
+              </button>
             </div>
             <ul className={styles.presencias}>
               {vista.presencias.map((p, i) => {
@@ -197,7 +223,7 @@ export function DetalleProducto() {
                       aria-current={esDestino ? 'step' : undefined}
                     >
                       <span className={styles.presenciaLetra}>
-                        <ContenedorLetra idx={p.ordenPedido} variante={p.estado === 'completo' ? 'completo' : 'normal'} />
+                        <ContenedorLetra letra={p.contenedor} variante={p.estado === 'completo' ? 'completo' : 'normal'} />
                       </span>
                       <div className={styles.presenciaInfo}>
                         <div className={styles.presenciaHead}>
@@ -211,11 +237,11 @@ export function DetalleProducto() {
                         {p.estado === 'negado' ? (
                           <Chip status="negado" />
                         ) : esDestino && partidaDestino ? (
-                          <Stepper
-                            value={partidaDestino.surtido}
-                            min={0}
-                            max={Math.min(partidaDestino.solicitado, partidaDestino.existencia)}
-                            onChange={cambiarCantidad}
+                          <CantidadSurtida
+                            valor={cantidad}
+                            maximo={partidaDestino.solicitado}
+                            habilitada={surtidoGuardado > 0}
+                            onCambiar={setCantidad}
                           />
                         ) : (
                           <Chip status={statusDeEstado(p.estado)} value={p.surtido} total={p.solicitado} />
@@ -229,16 +255,10 @@ export function DetalleProducto() {
           </section>
 
           {bloqueado && <p className={styles.consulta}>Este producto ya no tiene partidas pendientes en la ronda.</p>}
-
-          {/* Misceláneo: sin campo de lector (FR-016) */}
-          {!vista.miscelaneo && !bloqueado && (
-            <div className={styles.lector}>
-              <ScanInput onScan={onScan} autoFocus={!negando && !capturando && !cambio} />
-            </div>
-          )}
         </div>
       </ContentPanel>
 
+      {/* Botones de "Negar producto" (3199:6476), como el V2: el detalle no tiene lector (clarify 28). */}
       <BottomBar variant="footer">
         <Button variant="default" label="Regresar" className={styles.flex1} onClick={volver} />
         <Button
@@ -246,7 +266,7 @@ export function DetalleProducto() {
           label="Negar producto"
           className={styles.flex1}
           disabled={aNegar.length === 0}
-          onClick={() => setNegando(true)}
+          onClick={pedirNegacion}
         />
       </BottomBar>
 
@@ -263,22 +283,41 @@ export function DetalleProducto() {
       {cambio && (
         <CambioPedidoModal
           codigo={codigo}
+          descripcion={vista.descripcion}
           {...cambio}
-          onEntendido={() => setCambio(null)}
-        />
-      )}
-
-      {capturando && (
-        <CantidadModal
-          codigo={vista.codigo}
-          sugerida={partidaDestino ? partidaDestino.solicitado - partidaDestino.surtido : 0}
-          onCancel={() => setCapturando(false)}
-          onConfirm={(n) => {
-            setCapturando(false);
-            surtir(n);
+          onEntendido={() => {
+            setCambio(null);
+            irAlListado();
           }}
         />
       )}
+
+      {negacionBloqueada === 'con-piezas' && (
+        <AvisoModal titulo="No es posible negar el producto" tipo="error" botones={[{ label: 'Aceptar', onClick: () => setNegacionBloqueada(null) }]}>
+          <TextoAviso>
+            <ConNegritas texto="Para poder negar un producto la **cantidad surtida debe ser cero.**" />
+          </TextoAviso>
+        </AvisoModal>
+      )}
+
+      {negacionBloqueada === 'corporativo' && (
+        <AvisoModal titulo="Pedido corporativo" tipo="error" botones={[{ label: 'Aceptar', onClick: () => setNegacionBloqueada(null) }]}>
+          <TextoAviso>
+            <ConNegritas texto="Este pedido no permite negar productos. Para continuar, **finaliza el surtido de forma manual y saca el pedido de la ronda.**" />
+          </TextoAviso>
+        </AvisoModal>
+      )}
+
+      {confirmandoCorreccion && aCorregir && (
+        <ConfirmarCorreccionModal
+          codigo={codigo}
+          pedidoId={aCorregir.pedidoId}
+          contenedor={aCorregir.contenedor}
+          onRechazar={() => setConfirmandoCorreccion(false)}
+          onAceptar={corregir}
+        />
+      )}
+
     </div>
   );
 }

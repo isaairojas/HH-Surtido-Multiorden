@@ -1,0 +1,48 @@
+.screen {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blanco);
+}
+
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding-top: 24px;
+  text-align: center;
+}
+
+/* Marca de pantalla de referencia de la demo (no es una pantalla del cambio) */
+.etiqueta {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--color-inactive);
+  color: var(--color-negro);
+  font: 700 12px/normal var(--font-family-roboto);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.texto {
+  margin: 0;
+  color: var(--color-negro);
+  font: var(--font-b3-body);
+  line-height: normal;
+}
+
+.texto b {
+  font-weight: 700;
+}
+
+.nota {
+  margin: 0;
+  color: var(--color-inactive-text);
+  font: var(--font-b1-body);
+  line-height: normal;
+}
+
+.full {
+  width: 100%;
+}

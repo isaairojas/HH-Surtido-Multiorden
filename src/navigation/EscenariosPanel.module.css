@@ -1,6 +1,8 @@
 /**
  * Panel de escenarios: se ancla a la derecha del viewport, en el hueco que queda al lado del
  * app-frame de 430 px. En pantallas estrechas (< 900 px) se oculta para no cubrir el handheld.
+ * Con un escenario elegido, la explicación ocupa el extremo derecho y la lista se corre a su izquierda
+ * (desde 1280 px; antes, la explicación cubre la lista). El espacio se reserva en styles/global.css.
  */
 .panel {
   position: fixed;
@@ -23,6 +25,23 @@
   .panel {
     display: none;
   }
+}
+
+@media (min-width: 1280px) {
+  .panelConExplicacion {
+    right: 440px; /* 24 + 400 de la explicación + 16 de separación */
+  }
+}
+
+.verExplicacion {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #2d5cfe;
+  color: #fff;
+  font: 700 12px/1.3 var(--font-family-roboto);
+  text-align: left;
 }
 
 .header {
@@ -72,12 +91,6 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   border-bottom: 1px solid rgba(45, 92, 254, 0.15);
-}
-
-.grupoNota {
-  margin: 0;
-  color: #5b6472;
-  font: 400 12px/1.45 var(--font-family-roboto);
 }
 
 .list {
@@ -151,4 +164,305 @@
 
 .reglas li {
   margin-top: 2px;
+}
+
+/* ---- Catálogo para QA (2026-11-09) ---- */
+.buscar {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  font: 400 13px/1.2 var(--font-family-roboto);
+}
+
+.grupoTitulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 0 6px;
+  border: none;
+  border-bottom: 1px solid rgba(45, 92, 254, 0.15);
+  background: transparent;
+  color: #2d5cfe;
+  font: 700 12px/1.2 var(--font-family-roboto);
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.grupoCuenta {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(45, 92, 254, 0.1);
+  font-size: 11px;
+}
+
+.requisitos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.requisito {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.requisitoTitulo {
+  margin: 0;
+  color: #222;
+  font: 700 12px/1.3 var(--font-family-roboto);
+}
+
+.marcaExtra,
+.marcaServidor {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fff4d6;
+  color: #7a5a00;
+  font: 700 10px/1.4 var(--font-family-roboto);
+  vertical-align: middle;
+}
+
+.marcaServidor {
+  background: #e7f0ff;
+  color: #1f4fd6;
+}
+
+.vacio {
+  margin: 0;
+  color: #777;
+  font: 400 12px/1.4 var(--font-family-roboto);
+}
+
+.activoRuta {
+  margin: 0;
+  color: #1f4fd6;
+  font: 700 11px/1.3 var(--font-family-roboto);
+}
+
+.activoEtiqueta {
+  margin: 4px 0 0;
+  color: #555;
+  font: 700 11px/1 var(--font-family-roboto);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: #222;
+  font: 400 14px/1.45 var(--font-family-roboto);
+}
+
+.esperado {
+  margin: 0;
+  color: #000;
+  font: 700 14px/1.45 var(--font-family-roboto);
+}
+
+.codigos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.copiar {
+  padding: 6px 10px;
+  border: 1px solid #2d5cfe;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f4fd6;
+  font: 700 12px/1 var(--font-family-roboto);
+  cursor: pointer;
+}
+
+.copiado {
+  background: #2d5cfe;
+  color: #fff;
+}
+
+.reiniciar {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: #1f4fd6;
+  font: 700 12px/1 var(--font-family-roboto);
+  text-decoration: none;
+}
+
+/* ---- Explicación del escenario: ventana lateral (revisión del 2026-11-09) ---- */
+.explicacion {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 101;
+  display: flex;
+  width: 400px;
+  flex-direction: column;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 0 0 2px #2d5cfe;
+  overflow: hidden;
+}
+
+/* Entre 901 y 1279 px no caben las dos columnas: la explicación cubre la lista (se cierra con ✕). */
+@media (max-width: 1279px) {
+  .explicacion {
+    width: 380px;
+  }
+}
+
+@media (max-width: 900px) {
+  .explicacion {
+    display: none;
+  }
+}
+
+.explicacionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #2d5cfe;
+  color: #fff;
+}
+
+.explicacionNumero {
+  font: 700 12px/1 var(--font-family-roboto);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.cerrar {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #fff;
+  font: 700 16px/1 var(--font-family-roboto);
+}
+
+.cerrar:hover,
+.cerrar:focus-visible {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.explicacionCuerpo {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.explicacionTitulo {
+  margin: 0;
+  color: #000;
+  font: 700 20px/1.25 var(--font-family-roboto);
+}
+
+.requisitoEnExplicacion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #222;
+  font: 700 13px/1.35 var(--font-family-roboto);
+}
+
+.nota {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fff4d6;
+  color: #7a5a00;
+  font: 400 12px/1.4 var(--font-family-roboto);
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #ececec;
+}
+
+.bloqueEsperado {
+  padding: 12px 14px;
+  border-top: none;
+  border-radius: 8px;
+  background: #eef2ff;
+}
+
+.pedidos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #222;
+  font: 400 13px/1.35 var(--font-family-roboto);
+}
+
+.pedidos li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.letra {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1b3892;
+  color: #fff;
+  font: 700 11px/1 var(--font-family-roboto);
+}
+
+.cliente {
+  color: #5b6472;
+  font-size: 12px;
+}
+
+.explicacionPie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid #ececec;
+  background: #fafafa;
+}
+
+.navegar {
+  display: flex;
+  gap: 14px;
+}
+
+.navegarLiga {
+  color: #1f4fd6;
+  font: 700 12px/1 var(--font-family-roboto);
+  text-decoration: none;
+}
+
+.navegarLiga:hover,
+.reiniciar:hover {
+  text-decoration: underline;
 }

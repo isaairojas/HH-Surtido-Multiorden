@@ -1,0 +1,24 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="91" height="91" viewBox="0 0 91 91" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Mismo patrón que modal-icono-pregunta.svg (círculo blanco, círculo azul con sombra y glifo blanco).
+     Glifo de reloj del modal "Tarea incompleta" del V2 (nameIcon="Clock"). -->
+<g id="Grupo reloj">
+<circle cx="45" cy="46.5029" r="44" fill="white"/>
+<g filter="url(#filter0_d_reloj)">
+<circle cx="45.5" cy="45.5" r="38" fill="#1B3892"/>
+</g>
+<circle cx="45.5" cy="45.5" r="15.2" stroke="white" stroke-width="3.4"/>
+<path d="M45.5 37.2V46.2L51.6 50.1" stroke="white" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<filter id="filter0_d_reloj" x="0" y="0" width="91" height="91" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="3.75"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25098 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_reloj"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_reloj" result="shape"/>
+</filter>
+</defs>
+</svg>

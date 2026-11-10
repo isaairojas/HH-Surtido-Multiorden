@@ -26,6 +26,13 @@
   }
 }
 
+/* Con la explicación del escenario abierta no cabe hasta 1740 px: ahí la explicación ya trae sus lecturas. */
+@media (max-width: 1739px) {
+  :global(#root.con-explicacion) .panel {
+    display: none;
+  }
+}
+
 .header {
   display: flex;
   flex-direction: column;

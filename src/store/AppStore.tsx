@@ -1,8 +1,10 @@
 /**
- * Estado global del surtido multi-orden: ronda en curso + toasts.
+ * Estado global del surtido multi-orden: ronda en curso, toasts y, solo para la demo, la configuración
+ * simulada de la sucursal.
  */
-import { createContext, useCallback, useContext, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
-import { estadoInicial, rondaReducer, type RondaAction, type RondaState } from '../domain/ronda';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
+import { estadoInicial, pedidoCompleto, rondaReducer, tareaSinAvance, type RondaAction, type RondaState } from '../domain/ronda';
+import { SIMULACION_INICIAL, type Simulacion } from '../domain/simulacion';
 import type { ToastKind } from '../design-system/components/organisms/Toast/Toast';
 
 export type Etapa = 'surtido' | 'tareas';
@@ -22,24 +24,71 @@ type Store = {
   cerrarToast: () => void;
   ultimoEscaneo: UltimoEscaneo | null;
   setUltimoEscaneo: (u: UltimoEscaneo | null) => void;
+  /**
+   * Pedidos cuyo aviso "Pedido completado" ya salió (o que ya estaban cerrados al arrancar). Vive aquí y
+   * no en la lista porque un pedido también se cierra o se reabre desde el detalle, que desmonta la lista.
+   */
+  pedidosAvisados: Set<string>;
+  /** Configuración simulada de la sucursal, la tarea y el servidor (la siembra el escenario). */
+  simulacion: Simulacion;
+  /** La tarea tal como llegó del servidor (sin avance): salir del listado descarta todo y vuelve a este estado. */
+  tareaOriginal: RondaState;
+  /**
+   * El listado ya se abrió (contenedores vinculados). Ir al detalle y volver no es una
+   * apertura nueva; salir, finalizar o retomar la tarea sí.
+   */
+  listadoAbierto: boolean;
+  setListadoAbierto: (v: boolean) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
 
-export type Semilla = { ronda?: RondaState; etapa?: Etapa; toast?: Omit<ToastData, 'id'>; ultimoEscaneo?: UltimoEscaneo };
+export type Semilla = {
+  ronda?: RondaState;
+  etapa?: Etapa;
+  toast?: Omit<ToastData, 'id'>;
+  ultimoEscaneo?: UltimoEscaneo;
+  simulacion?: Partial<Simulacion>;
+};
 
 export function AppStoreProvider({ children, semilla }: { children: ReactNode; semilla?: Semilla }) {
   const [ronda, dispatch] = useReducer(rondaReducer, undefined, () => semilla?.ronda ?? estadoInicial());
+  const [tareaOriginal] = useState<RondaState>(() => tareaSinAvance(ronda));
   const [etapa, setEtapa] = useState<Etapa>(semilla?.etapa ?? 'tareas');
   const [toast, setToast] = useState<ToastData | null>(semilla?.toast ? { id: 0, ...semilla.toast } : null);
   const [ultimoEscaneo, setUltimoEscaneo] = useState<UltimoEscaneo | null>(semilla?.ultimoEscaneo ?? null);
+  // Conjunto mutable y estable: la lista lo consulta y lo actualiza al mostrar el aviso.
+  const [pedidosAvisados] = useState(() => new Set(ronda.ronda.pedidos.filter(pedidoCompleto).map((p) => p.id)));
+  const [simulacion] = useState<Simulacion>(() => ({ ...SIMULACION_INICIAL, ...semilla?.simulacion }));
+  const [listadoAbierto, setListadoAbierto] = useState(false);
+
+  // SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido: un pedido reabierto por
+  // una corrección vuelve a avisar "Pedido completado" cuando se completa otra vez.
+  useEffect(() => {
+    for (const p of ronda.ronda.pedidos) if (!pedidoCompleto(p)) pedidosAvisados.delete(p.id);
+  }, [ronda, pedidosAvisados]);
 
   const mostrarToast = useCallback((t: Omit<ToastData, 'id'>) => setToast({ id: Date.now(), ...t }), []);
   const cerrarToast = useCallback(() => setToast(null), []);
 
   const value = useMemo(
-    () => ({ ronda, dispatch, etapa, setEtapa, toast, mostrarToast, cerrarToast, ultimoEscaneo, setUltimoEscaneo }),
-    [ronda, etapa, toast, mostrarToast, cerrarToast, ultimoEscaneo],
+    () => ({
+      ronda,
+      dispatch,
+      etapa,
+      setEtapa,
+      toast,
+      mostrarToast,
+      cerrarToast,
+      ultimoEscaneo,
+      setUltimoEscaneo,
+      pedidosAvisados,
+      simulacion,
+      tareaOriginal,
+      listadoAbierto,
+      setListadoAbierto,
+    }),
+    [ronda, etapa, toast, mostrarToast, cerrarToast, ultimoEscaneo, pedidosAvisados, simulacion, tareaOriginal, listadoAbierto],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
