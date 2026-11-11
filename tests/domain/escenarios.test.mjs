@@ -8,7 +8,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { etiqueta } from '../../src/domain/codigos.ts';
+import { etiqueta, leerCodigo } from '../../src/domain/codigos.ts';
+import { debeLeer, resumenVoz } from '../../src/domain/voz.ts';
+import { SIMULACION_INICIAL } from '../../src/domain/simulacion.ts';
 import { interpretarLectura } from '../../src/domain/lector.ts';
 import {
   cambioDePedido,
@@ -25,7 +27,7 @@ import {
   promocionesPendientes,
   rondaReducer,
 } from '../../src/domain/ronda.ts';
-import { ESCENARIOS } from '../../src/navigation/escenarios.ts';
+import { E1, E2, ESCENARIOS } from '../../src/navigation/escenarios.ts';
 import { CASOS } from '../../src/navigation/catalogo.ts';
 import { PRESETS_ARMADO } from '../../src/domain/armadoEscenarios.ts';
 
@@ -201,4 +203,63 @@ test('Orden del listado: secciones Pendientes, Parciales, Negados y Completados,
   const o = ordenarListado(productosVista(r), { familia: true, ubicaciones: false }).map((v) => v.codigo);
   // 0486600 queda parcial y 1365800 negado: van después de los pendientes, en ese orden.
   assert.deepEqual(o.slice(-2), ['0486600', '1365800']);
+});
+
+const opciones = (id) => {
+  const sim = { ...SIMULACION_INICIAL, ...semilla(id).simulacion };
+  return { etiquetaUnica: sim.etiquetaUnica, etiquetasMasAntiguas: sim.etiquetasMasAntiguas };
+};
+const conEtiquetas = (id) => ({ ronda: ronda(id), etiquetas: semilla(id).ronda?.etiquetas });
+
+test('Etiqueta única: el QR se lee como en el V2 (producto, cantidad y etiqueta)', () => {
+  const l = leerCodigo(E1);
+  assert.equal(l.tipo, 'qr');
+  assert.equal(l.codigo, '0486600');
+  assert.equal(l.cantidad, 1);
+  assert.notEqual(E1, E2);
+});
+
+test('EU · QR sin etiqueta única activa: sigue la validación de cantidad y la pieza entra a 1001', () => {
+  const res = interpretarLectura(estado('eu-inactiva'), E1, opciones('eu-inactiva'));
+  assert.deepEqual(res, { tipo: 'surtir', codigo: '0486600', cantidad: 1 });
+  assert.equal(desglose(surtir(estado('eu-inactiva'), '0486600', 1).ronda, '0486600'), 'A 1/11 · B 0/5 · C 0/3');
+});
+
+test('EU · Etiqueta repetida en la ronda: E1 ya surtida a 1001 se rechaza y no suma', () => {
+  const s = conEtiquetas('eu-repetida-ronda');
+  assert.deepEqual(s.etiquetas, [{ qr: E1, pedidoId: '1001', codigo: '0486600' }]);
+  assert.deepEqual(interpretarLectura(s, E1, opciones('eu-repetida-ronda')), { tipo: 'etiqueta-repetida', codigo: '0486600', pedidoUnico: false });
+  // Otra etiqueta sí entra y queda relacionada con el pedido que recibe la pieza.
+  const otra = interpretarLectura(s, E2, opciones('eu-repetida-ronda'));
+  assert.equal(otra.etiqueta, E2);
+  const despues = rondaReducer(s, { type: 'surtirPorCodigo', codigo: '0486600', cantidad: 1, etiqueta: E2 });
+  assert.deepEqual(despues.etiquetas.at(-1), { qr: E2, pedidoId: '1001', codigo: '0486600' });
+});
+
+test('EU · Etiqueta repetida en un pedido único: se rechaza con el texto del pedido', () => {
+  const s = conEtiquetas('eu-repetida-pedido-unico');
+  assert.equal(s.ronda.pedidos.length, 1);
+  assert.equal(interpretarLectura(s, E1, opciones('eu-repetida-pedido-unico')).pedidoUnico, true);
+});
+
+test('EU · Caducidad más próxima en una ronda: "Etiqueta inválida" y, al confirmar, la pieza va a 1002', () => {
+  const s = estado('eu-caducidad');
+  const res = interpretarLectura(s, E2, opciones('eu-caducidad'));
+  assert.deepEqual(res, { tipo: 'etiqueta-antigua', codigo: '0486600', cantidad: 1, etiqueta: E2 });
+  const despues = rondaReducer(s, { type: 'surtirPorCodigo', codigo: res.codigo, cantidad: res.cantidad, etiqueta: res.etiqueta });
+  assert.equal(desglose(despues.ronda, '0486600'), 'A 11/11 · B 1/5 · C 0/3');
+  assert.deepEqual(despues.etiquetas, [{ qr: E2, pedidoId: '1002', codigo: '0486600' }]);
+});
+
+test('Guía por voz: "Ronda de 3 pedidos, …" sin folio y "Pedido 1001, …" con un solo pedido', () => {
+  assert.equal(resumenVoz(ronda('voz-ronda-58')), 'Ronda de 3 pedidos, 0 códigos surtidos, 0 surtidos parcialmente y 7 pendientes de surtir');
+  assert.ok(!resumenVoz(ronda('voz-ronda-58')).includes('R-2026'));
+  assert.equal(resumenVoz(ronda('voz-pedido-unico-58')), 'Pedido 1001, 0 códigos surtidos, 0 surtidos parcialmente y 4 pendientes de surtir');
+});
+
+test('Guía por voz: la tarea 58 siempre lee; la 31 solo con "Lectura de elementos" encendida', () => {
+  const sim = (id) => ({ ...SIMULACION_INICIAL, ...semilla(id).simulacion });
+  assert.equal(debeLeer(sim('voz-58-apagada')), true);
+  assert.equal(debeLeer(sim('voz-31-encendida')), true);
+  assert.equal(debeLeer({ ...SIMULACION_INICIAL, tipoTarea: 31, lecturaElementos: false }), false);
 });

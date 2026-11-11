@@ -14,6 +14,7 @@ import { DetalleProducto } from './screens/surtido/DetalleProducto';
 import { InicioSesion, SurtidoAnterior } from './screens/referencia/PantallaReferencia';
 import { ArmadoRonda } from './screens/armado/ArmadoRonda';
 import { ToastHost } from './navigation/ToastHost';
+import { VozHost } from './navigation/VozHost';
 import { EscenariosPanel } from './navigation/EscenariosPanel';
 import { CodigosCheatsheet } from './navigation/CodigosCheatsheet';
 
@@ -48,6 +49,7 @@ export function App() {
           <Route path="*" element={<Navigate to="/tareas" replace />} />
         </Routes>
         <ToastHost />
+        <VozHost />
       </div>
       <EscenariosPanel />
       {simulando && <CodigosCheatsheet />}

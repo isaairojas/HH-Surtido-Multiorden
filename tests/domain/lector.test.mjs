@@ -1,7 +1,7 @@
 /**
  * Pruebas del lector y de las reglas que la demo añadió el 2026-11-09 para cubrir los escenarios de QA:
  * producto negado, sobrante, sacar un pedido, letras de contenedor, tarea sin avance, orden del cierre y familias.
- * La etiqueta única (QR), la voz y lo que se manda al servidor no están en la demo (2026-11-09).
+ * La etiqueta única y la voz se prueban, con los datos de la spec, en escenarios.test.mjs (desde 2026-11-11).
  *
  * Correr con: npm run test:domain
  */

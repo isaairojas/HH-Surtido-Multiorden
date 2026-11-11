@@ -5,7 +5,7 @@
  *
  * | Código  | Papel en la spec                                                                 | A · 1001 | B · 1002 | C · 1003 |
  * | ------- | -------------------------------------------------------------------------------- | -------- | -------- | -------- |
- * | 0486600 | Compartido principal; se escanea; "Kit afinación" en A y B                       | 11       | 5        | 3        |
+ * | 0486600 | Compartido principal; se escanea; "Kit afinación" en A y B; requiere EU        | 11       | 5        | 3        |
  * | 2389475 | Pareja del kit en A y B; en B la ubicación tiene 1 de existencia; sin imagen    | 2        | 2        | 2        |
  * | 1394010 | Misceláneo (la cantidad se captura a mano)                                       | 4        | 2        | 3        |
  * | 1365800 | En la ronda pero fuera de la promoción; se escanea                               | 1        | —        | —        |
@@ -53,11 +53,19 @@ export const CLIENTE_B: Cliente = { id: 'CLI-B', nombre: 'REFACCIONARIA LA ÚNIC
 
 export const KIT_AFINACION: Promocion = { id: 'PROMO-AFINACION', nombre: 'Kit afinación' };
 
-type Producto = { descripcion: string; familia: string; imagen: string; ubicacion: Ubicacion; miscelaneo: boolean };
+type Producto = {
+  descripcion: string;
+  familia: string;
+  imagen: string;
+  ubicacion: Ubicacion;
+  miscelaneo: boolean;
+  /** Requiere etiqueta única: con la EU activa en la tarea, su QR se valida. */
+  requiereEU?: boolean;
+};
 
 /** Atributos del producto (iguales en todos los pedidos). */
 export const PRODUCTOS: Record<string, Producto> = {
-  '0486600': { descripcion: 'Arnés eléctrico con conectores', familia: 'Arnés', imagen: arnes, ubicacion: PASILLO_2, miscelaneo: false },
+  '0486600': { descripcion: 'Arnés eléctrico con conectores', familia: 'Arnés', imagen: arnes, ubicacion: PASILLO_2, miscelaneo: false, requiereEU: true },
   '2389475': { descripcion: 'Juego de bujías', familia: 'Bujía', imagen: SIN_FOTO, ubicacion: PASILLO_3, miscelaneo: true },
   '1394010': { descripcion: 'Cinta aislante negra 60 pies Temflex 155 3M', familia: 'Cinta', imagen: cinta, ubicacion: PASILLO_1, miscelaneo: true },
   '1365800': { descripcion: 'Cilindro de encendido con llaves', familia: 'Cilindro encendido', imagen: cilindro, ubicacion: PASILLO_3, miscelaneo: false },
@@ -88,6 +96,8 @@ export function partida(codigo: string, solicitado: number, extras: Extras = {})
     imagen: prod.imagen,
     ubicacion: prod.ubicacion,
     miscelaneo: prod.miscelaneo,
+    requiereEU: prod.requiereEU ?? false,
+    perecedero: false,
     surtido: 0,
     solicitado,
     existencia: extras.existencia ?? solicitado + 20,

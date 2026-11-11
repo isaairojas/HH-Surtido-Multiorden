@@ -26,8 +26,9 @@
  * - Orden de los avisos al finalizar: corporativo incompleto → códigos en 0 → promociones → parciales →
  *   confirmación (revisión del usuario del 2026-11-09; es el orden del V2 real, `onPressFinishAssortmentManually`).
  *
- * Fuera de la demo (revisión del 2026-11-09): lo que se manda al servidor, la guía por voz y la etiqueta
- * única. Siguen en la spec.
+ * - Guía por voz en el listado: resumen al abrir, al completar un producto y con "Repetir audio" (desde 2026-11-11).
+ * SDD 2026-10-26-multipedido-surtido-listado · Validación de etiqueta única (EU): QR repetido en la ronda y caducidad
+ * más próxima (desde 2026-11-11). Lo que se manda al servidor no se ve en la demo.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ import { Button } from '@ds/components/atoms/Button/Button';
 import { sonar } from '../../domain/sonidos';
 import { interpretarLectura } from '../../domain/lector';
 import { ordenDelListado } from '../../domain/simulacion';
+import { callar, debeLeer, resumenVoz } from '../../domain/voz';
 import cargandoIcono from '@assets/icons/loading-indicator.svg';
 import {
   AVISOS,
@@ -62,6 +64,9 @@ import {
   proximaPartidaPara,
   rondaCompleta,
   rondaReducer,
+  statusProducto,
+  productoVista,
+  type Ronda,
   type Pedido,
   type ProductoVista,
   type PromocionPendiente,
@@ -114,6 +119,7 @@ export function SurtidoRonda() {
     listadoAbierto,
     setListadoAbierto,
     cargarSiguienteTarea,
+    leer,
   } = useStore();
   const scanRef = useRef<ScanInputHandle>(null);
   const [capturando, setCapturando] = useState<string | null>(null);
@@ -133,6 +139,12 @@ export function SurtidoRonda() {
   >(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [menu, setMenu] = useState(false);
+  /**
+   * Etiqueta única de un perecedero con etiquetas de caducidad más próxima: "Etiqueta inválida" hasta que el usuario
+   * confirme "No existen etiquetas más antiguas" (SDD 2026-10-26-multipedido-surtido-listado · Validación de etiqueta
+   * única (EU) · "Caducidad más próxima en una ronda").
+   */
+  const [antigua, setAntigua] = useState<{ codigo: string; cantidad: number; etiqueta: string } | null>(null);
   /** El aviso de finalizar se ofrece solo una vez; después, con "Finalizar surtido". */
   const finalizarOfrecido = useRef(false);
   /** Veces que ya falló el guardado de cada pedido (`simulacion.vecesFallaGuardado` las limita). */
@@ -147,6 +159,14 @@ export function SurtidoRonda() {
 
   const r = ronda.ronda;
   const multipedido = esMultipedidoV2(r);
+
+  /**
+   * Guía por voz (SDD 2026-11-05-multipedido-surtido-listado-cierre · Guía por voz en el listado): en la tarea 58, o
+   * en la 31 con "Lectura de elementos" encendida, lee "Ronda de {n} pedidos, …" (o "Pedido {n}, …" con uno solo).
+   */
+  const leerResumen = (ronda: Ronda) => {
+    if (debeLeer(simulacion)) leer(resumenVoz(ronda));
+  };
 
   // Orden del V2: secciones Pendientes, Parciales, Negados y Completados sin encabezados; dentro, por familia
   // (Bandera_AgrupacionFamiliaEnHH; si su consulta falla, inactiva), ubicación (Bandera_UbicacionesUDN) o código.
@@ -175,6 +195,8 @@ export function SurtidoRonda() {
         return setAviso({ tipo: 'error-carga' });
       }
       setListadoAbierto(true);
+      // Guía por voz: el resumen al abrir el listado.
+      leerResumen(r);
     };
     if (simulacion.demoraCarga > 0) {
       const t = window.setTimeout(abrir, simulacion.demoraCarga);
@@ -186,6 +208,9 @@ export function SurtidoRonda() {
     abrir();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // La voz se detiene al salir del listado.
+  useEffect(() => callar, []);
 
   // El último producto escaneado se lleva a la vista para que el surtidor lo vea marcado.
   useEffect(() => {
@@ -230,7 +255,7 @@ export function SurtidoRonda() {
 
   /**
    * Registra un `FillOrderFull` por pedido, con su contenedor, y guarda la ronda una sola vez. Si el registro
-   * de un pedido falla, se detiene ahí. (Las etiquetas únicas se relacionarían por pedido; fuera de la demo.)
+   * de un pedido falla, se detiene ahí. (Cada etiqueta única ya va relacionada con su pedido en `ronda.etiquetas`.)
    *
    * Sin errores, no hay pantalla de resumen: se vuelve a la asignación de tareas con la siguiente tarea ya
    * cargada y el toast "Surtido finalizado" (SDD 2026-10-26-multipedido-surtido-listado · Finalizar el surtido
@@ -351,16 +376,21 @@ export function SurtidoRonda() {
   };
 
   /** Aplica la cantidad al pedido con menor orden que todavía necesita el código (FR-010). */
-  const surtir = (codigo: string, cantidad: number) => {
+  const surtir = (codigo: string, cantidad: number, etiqueta?: string) => {
     const ev = evaluarSurtido(r, codigo, cantidad);
     if (!ev.ok) return rechazar(ev.rechazo);
     sonar('ok');
     // El pedido que recibe las piezas es el destino antes de aplicar el surtido (FR-010).
     const destino = proximaPartidaPara(r, codigo);
     if (destino) setUltimoEscaneo({ codigo, pedidoId: r.pedidos[destino.pedidoIdx].id });
-    const accion = { type: 'surtirPorCodigo', codigo, cantidad } as const;
-    const cp = cambioDePedido(r, rondaReducer(ronda, accion).ronda, codigo);
+    const accion = { type: 'surtirPorCodigo', codigo, cantidad, etiqueta } as const;
+    const despues = rondaReducer(ronda, accion).ronda;
+    const cp = cambioDePedido(r, despues, codigo);
     dispatch(accion);
+    // Guía por voz: el resumen actualizado al completar un producto.
+    const antes = productoVista(r, codigo);
+    const ahora = productoVista(despues, codigo);
+    if (ahora && statusProducto(ahora) === 'completado' && (!antes || statusProducto(antes) !== 'completado')) leerResumen(despues);
     // Pedido cerrado: lo avisa PedidoCompletadoModal, que ya nombra el siguiente pedido.
     if (cp && !pedidoCompleto(cp.desde)) {
       const descripcion = destino ? partidaEn(r, destino).descripcion : '';
@@ -394,13 +424,32 @@ export function SurtidoRonda() {
   };
 
   const onScan = (valor: string) => {
-    const res = interpretarLectura(ronda, valor);
+    const res = interpretarLectura(ronda, valor, {
+      etiquetaUnica: simulacion.etiquetaUnica,
+      etiquetasMasAntiguas: simulacion.etiquetasMasAntiguas,
+    });
     if (res.tipo === 'invalida') return sonar('error');
     if (res.tipo === 'rechazo') return rechazar(res.rechazo);
+    // Etiqueta única ya surtida: alerta "Advertencia", sin voz y sin sumar a ningún pedido. En la ronda no se repite
+    // en ningún pedido; con un solo pedido, el texto de hoy (`tagAlreadyScannedInOrder`).
+    if (res.tipo === 'etiqueta-repetida') {
+      sonar('error');
+      return mostrarToast({
+        kind: 'warning',
+        title: 'Advertencia',
+        message: res.pedidoUnico
+          ? 'La etiqueta ya fue escaneada en este pedido, por favor escanea otra etiqueta.'
+          : 'La etiqueta ya fue escaneada en esta ronda, por favor escanea otra etiqueta.',
+      });
+    }
+    if (res.tipo === 'etiqueta-antigua') {
+      sonar('error');
+      return setAntigua({ codigo: res.codigo, cantidad: res.cantidad, etiqueta: res.etiqueta });
+    }
+    if (res.tipo === 'surtir') return surtir(res.codigo, res.cantidad, res.etiqueta);
     // Código corto o partida misceláneo: la cantidad se captura a mano
     // (Revision-HH-v2 abre el bottom sheet de cantidad en ambos casos).
-    if (res.tipo === 'capturar') return setCapturando(res.codigo);
-    surtir(res.codigo, res.cantidad);
+    setCapturando(res.codigo);
   };
 
   const partidaCapturando = capturando ? proximaPartidaPara(r, capturando) : null;
@@ -412,7 +461,8 @@ export function SurtidoRonda() {
     ? (r.pedidos.slice(r.pedidos.indexOf(transicion) + 1).find((p) => !pedidoCompleto(p)) ?? null)
     : null;
 
-  const hayOverlay = capturando !== null || transicion !== null || cambio !== null || promo !== null || aviso !== null || menu;
+  const hayOverlay =
+    capturando !== null || transicion !== null || cambio !== null || promo !== null || aviso !== null || antigua !== null || menu;
   const totalPedidos = r.pedidos.length;
 
   return (
@@ -467,7 +517,35 @@ export function SurtidoRonda() {
         )}
       </BottomBar>
 
-      {menu && <MenuListado onCerrar={() => setMenu(false)} onFinalizar={() => intentarFinalizar(true)} />}
+      {menu && (
+        <MenuListado
+          onCerrar={() => setMenu(false)}
+          onRepetirAudio={() => {
+            setMenu(false);
+            leerResumen(r);
+          }}
+          onFinalizar={() => intentarFinalizar(true)}
+        />
+      )}
+
+      {antigua && (
+        <AvisoModal titulo="Etiqueta inválida" tipo="error" botones={[{ label: 'Aceptar', onClick: () => setAntigua(null) }]}>
+          <TextoAviso>
+            La etiqueta escaneada no corresponde a la mayor prioridad de salida.{' '}
+            <b>Escanea una etiqueta con la fecha de caducidad más próxima</b> ó selecciona no existen etiquetas más antiguas.
+          </TextoAviso>
+          <Button
+            variant="outline"
+            label="No existen etiquetas más antiguas"
+            className={styles.full}
+            onClick={() => {
+              const a = antigua;
+              setAntigua(null);
+              surtir(a.codigo, a.cantidad, a.etiqueta);
+            }}
+          />
+        </AvisoModal>
+      )}
 
       {capturando && (
         <CantidadModal

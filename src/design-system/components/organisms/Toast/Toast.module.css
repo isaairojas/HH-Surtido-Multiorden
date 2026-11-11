@@ -125,3 +125,27 @@
   width: calc(100% - 89.72% - 4.16%);
   height: calc(100% - 38.03% - 37.97%);
 }
+
+/* ---- Amarillo (añadido para el surtido multipedido V2, sin nodo en Figma): la alerta "Advertencia" del V2
+   (etiqueta ya escaneada). Misma geometría que el rojo, con la barra en el amarillo de los botones. */
+.warning .text {
+  right: 16.35%;
+  top: calc(50% - 4.5px);
+}
+.warning .bar {
+  left: 0.48%;
+  right: 2.4%;
+  background: var(--color-botones-amarillo);
+}
+.warning .close {
+  inset: 44.34% 4.81% 43.4% 92.07%;
+}
+.warning .divider {
+  top: 15.09%;
+  bottom: 23.58%;
+}
+.warning .icon {
+  inset: 38.03% 89.72% 37.97% 4.16%;
+  width: calc(100% - 89.72% - 4.16%);
+  height: calc(100% - 38.03% - 37.97%);
+}

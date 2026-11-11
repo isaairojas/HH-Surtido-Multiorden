@@ -10,11 +10,11 @@
  *
  * `extra`: regla escrita en el requisito que no tiene escenario propio en la spec.
  *
- * Fuera de la demo por ahora (fase 3 de la alineación): la etiqueta única (QR) con la caducidad más próxima y la
- * guía por voz; sus escenarios están en `tests/alineacion/pendientes.json`. Lo que la HH manda al servidor no se ve
- * en la demo: los casos solo describen lo que se ve en la HH.
+ * Etiqueta única: los QR de la demo (E1, E2…) los genera `qrEtiquetaUnica`; el servicio de etiqueta única se simula
+ * (da por buena toda etiqueta que no se haya escaneado ya). Guía por voz: se oye con la voz del navegador y se ve
+ * como subtítulo "Voz". Lo que la HH manda al servidor no se ve en la demo: los casos solo describen lo que se ve.
  */
-import { etiqueta } from '../domain/codigos';
+import { etiqueta, qrEtiquetaUnica } from '../domain/codigos';
 import { PRESETS_ARMADO } from '../domain/armadoEscenarios';
 
 export type CambioId = 'armado' | 'listado' | 'cierre' | 'imagen-familia';
@@ -50,6 +50,9 @@ const c = (valor: string, texto?: string): Codigo => ({ etiqueta: texto ?? valor
 const e18 = (codigo: string, n: number): Codigo => ({ etiqueta: `${n} ${n === 1 ? 'pieza' : 'piezas'} de ${codigo}`, valor: etiqueta(codigo, n) });
 
 const LISTADO = '2026-10-26-multipedido-surtido-listado';
+const qr = (serie: number): Codigo => ({ etiqueta: `QR E${serie} de 0486600 (1 pieza)`, valor: qrEtiquetaUnica('0486600', 1, serie) });
+const VOZ =
+  'La lectura sale como subtítulo "Voz" sobre la pantalla y, si el navegador tiene voz, también se oye (algunos navegadores solo hablan después de tocar la pantalla: usa ⋮ → "Repetir audio").';
 const TAREA = 'Toca ✓ (Aceptar).';
 const ESCANEA = (codigo: string, n: number) =>
   `Pega ${codigo} en el lector (o tócalo en ⌨ y tecléalo), captura ${n} y acepta.`;
@@ -318,6 +321,56 @@ const CASOS_HH: Caso[] = [
     pasos: ['1365800 fue negado.', 'Pega la etiqueta de 1 pieza de 1365800.'],
     esperado: '"Producto negado" y "El código escaneado fue negado y no es posible agregar unidades."',
     codigos: [e18('1365800', 1)],
+  },
+  {
+    id: 'eu-sin-activa',
+    cambio: 'listado',
+    requisito: 'Validación de etiqueta única (EU)',
+    escenario: 'QR sin etiqueta única activa',
+    semilla: 'eu-inactiva',
+    ruta: '/surtido',
+    pasos: ['La tarea no tiene activa la etiqueta única.', 'Pega el QR E1 de 0486600.'],
+    esperado: 'No sale ningún aviso de QR deshabilitado: la lectura sigue la validación de cantidad y la pieza entra a 1001 (A 1/11).',
+    codigos: [qr(1)],
+  },
+  {
+    id: 'eu-repetida-ronda',
+    cambio: 'listado',
+    requisito: 'Validación de etiqueta única (EU)',
+    escenario: 'Etiqueta repetida en la ronda',
+    semilla: 'eu-repetida-ronda',
+    ruta: '/surtido',
+    pasos: ['La etiqueta E1 ya se surtió al pedido 1001 de la ronda (A 1/11).', 'Pega otra vez el QR E1 de 0486600.'],
+    esperado:
+      'Alerta "Advertencia": "La etiqueta ya fue escaneada en esta ronda, por favor escanea otra etiqueta." y no se suma cantidad a ningún pedido (A sigue en 1/11 y B en 0/5).',
+    codigos: [qr(1)],
+  },
+  {
+    id: 'eu-repetida-pedido-unico',
+    cambio: 'listado',
+    requisito: 'Validación de etiqueta única (EU)',
+    escenario: 'Etiqueta repetida en un pedido único',
+    semilla: 'eu-repetida-pedido-unico',
+    ruta: '/surtido',
+    pasos: ['La tarea tiene un solo pedido y ya se escaneó la etiqueta única E1.', 'Pega otra vez el QR E1 de 0486600.'],
+    esperado: 'La rechaza ("La etiqueta ya fue escaneada en este pedido, por favor escanea otra etiqueta.", como hoy) y no suma cantidad.',
+    codigos: [qr(1)],
+  },
+  {
+    id: 'eu-caducidad',
+    cambio: 'listado',
+    requisito: 'Validación de etiqueta única (EU)',
+    escenario: 'Caducidad más próxima en una ronda',
+    semilla: 'eu-caducidad',
+    ruta: '/surtido',
+    pasos: [
+      '0486600 es perecedero con etiqueta única, hay etiquetas con caducidad más próxima y la siguiente pieza va a 1002 (A ya está completo).',
+      'Pega el QR E2 de 0486600 (más reciente).',
+      'Toca "No existen etiquetas más antiguas".',
+    ],
+    esperado:
+      '"Etiqueta inválida" ("La etiqueta escaneada no corresponde a la mayor prioridad de salida…"); con "No existen etiquetas más antiguas" la pieza se suma a 1002 (B 1/5), igual que la canónica "Caducidad más próxima en perecederos".',
+    codigos: [qr(2)],
   },
   {
     id: 'negar-primer-pedido-en-proceso',
@@ -962,6 +1015,46 @@ const CASOS_HH: Caso[] = [
     ruta: '/surtido',
     pasos: ['Hay productos con cantidad surtida 0 sin negar.', 'Toca ⋮ → "Finalizar surtido".'],
     esperado: 'El modal pide negar primero los códigos sin surtir: "Tienes códigos sin surtir, para finalizar el surtido primero deberás negarlos entrando al detalle del producto."',
+  },
+  {
+    id: 'voz-ronda',
+    cambio: 'cierre',
+    requisito: 'Guía por voz en el listado',
+    escenario: 'Resumen de una ronda multipedido V2',
+    semilla: 'voz-ronda-58',
+    ruta: '/surtido',
+    pasos: ['Ronda multipedido V2 de 3 pedidos en una tarea 58. Se abre el listado.'],
+    esperado: `La voz dice "Ronda de 3 pedidos, 0 códigos surtidos, 0 surtidos parcialmente y 7 pendientes de surtir", sin leer el folio de la ronda. ${VOZ}`,
+  },
+  {
+    id: 'voz-pedido-unico',
+    cambio: 'cierre',
+    requisito: 'Guía por voz en el listado',
+    escenario: 'Ronda de un solo pedido',
+    semilla: 'voz-pedido-unico-58',
+    ruta: '/surtido',
+    pasos: ['La tarea tiene un solo pedido. Se abre el listado.'],
+    esperado: `La voz dice "Pedido 1001, 0 códigos surtidos, 0 surtidos parcialmente y 4 pendientes de surtir", como hoy. ${VOZ}`,
+  },
+  {
+    id: 'voz-resumen-al-abrir',
+    cambio: 'cierre',
+    requisito: 'Guía por voz en el listado',
+    escenario: 'Resumen al abrir',
+    semilla: 'voz-31-encendida',
+    ruta: '/surtido',
+    pasos: ['Tarea 31 con el listado y "Lectura de elementos" de "Tareas de surtido" encendida. Se abre el listado.'],
+    esperado: `La voz dice cuántos códigos están surtidos, parciales y pendientes. También lee el resumen al completar un producto. ${VOZ}`,
+  },
+  {
+    id: 'voz-58-apagada',
+    cambio: 'cierre',
+    requisito: 'Guía por voz en el listado',
+    escenario: 'Tarea 58 con lectura apagada',
+    semilla: 'voz-58-apagada',
+    ruta: '/surtido',
+    pasos: ['"Lectura de elementos" de "Tareas de surtido" está apagada y se abre el listado de una tarea 58.'],
+    esperado: `La voz dice igual cuántos códigos están surtidos, parciales y pendientes: la preferencia no aplica a la tarea 58. ${VOZ}`,
   },
   {
     id: 'orden-corporativo-primero',

@@ -1,0 +1,31 @@
+/* Ayuda de la demo: borde punteado para que no se confunda con un aviso de la HH. */
+.voz {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 132px;
+  z-index: 40;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px dashed #5b6b7c;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  color: #1d2b3a;
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.etiqueta {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #1d2b3a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}

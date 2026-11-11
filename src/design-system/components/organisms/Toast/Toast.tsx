@@ -11,7 +11,8 @@ import successIcon from '@assets/icons/toast-success.svg';
 import errorIcon from '@assets/icons/toast-error.svg';
 import styles from './Toast.module.css';
 
-export type ToastKind = 'success' | 'error';
+/** `warning`: añadido para el surtido multipedido V2 (alerta "Advertencia" del V2), sin nodo en Figma. */
+export type ToastKind = 'success' | 'error' | 'warning';
 
 type Props = {
   kind: ToastKind;

@@ -91,14 +91,25 @@ export function DatosAviso({ filas }: { filas: { etiqueta: string; valor: ReactN
 }
 
 /**
- * Menú ⋮ del listado: "Finalizar surtido" (finalizar de forma manual), como en el V2. "Repetir audio" no está:
- * la guía por voz quedó fuera de la demo (2026-11-09).
- * SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al finalizar.
+ * Menú ⋮ del listado, como en el V2: "Repetir audio" (vuelve a leer el resumen, SDD
+ * 2026-11-05-multipedido-surtido-listado-cierre · Guía por voz en el listado) y "Finalizar surtido" (finalizar de
+ * forma manual, · Bloqueos y fallas al finalizar).
  */
-export function MenuListado({ onFinalizar, onCerrar }: { onFinalizar: () => void; onCerrar: () => void }) {
+export function MenuListado({
+  onFinalizar,
+  onRepetirAudio,
+  onCerrar,
+}: {
+  onFinalizar: () => void;
+  onRepetirAudio: () => void;
+  onCerrar: () => void;
+}) {
   return (
     <div className={styles.menuFondo} onClick={onCerrar} role="presentation">
       <div className={styles.menu} role="menu" aria-label="Opciones del surtido" onClick={(e) => e.stopPropagation()}>
+        <button type="button" role="menuitem" className={styles.menuOpcion} onClick={onRepetirAudio}>
+          Repetir audio
+        </button>
         <button type="button" role="menuitem" className={styles.menuOpcion} onClick={onFinalizar}>
           Finalizar surtido
         </button>

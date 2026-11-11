@@ -23,7 +23,16 @@ export type Simulacion = {
   /** `Bandera_UbicacionesUDN`: sin agrupación por familia, ordena cada sección por ubicación (si no, por código). */
   ubicacionesUDN: boolean;
 
+  /** "Lectura de elementos" de "Tareas de surtido" (preferencia del equipo): solo cuenta en la tarea 31. */
+  lecturaElementos: boolean;
+
   /* ---- Tarea ---- */
+  /** Tipo de tarea: 31 (surtido) o 58. La 58 lee en voz alta aunque la lectura esté apagada. */
+  tipoTarea: 31 | 58;
+  /** `surtidoEtiquetaUnicaEnabled` de la tarea: los productos con `requiereEU` validan su QR. */
+  etiquetaUnica: boolean;
+  /** El servicio de etiqueta única encuentra etiquetas con caducidad más próxima que la escaneada (perecederos). */
+  etiquetasMasAntiguas: boolean;
   /** La tarea llega sin productos. */
   sinProductos: boolean;
   /**
@@ -62,8 +71,8 @@ export type Simulacion = {
 };
 
 /**
- * Sucursal con multipedido V2, listado y agrupación por familia. Fuera de la demo (2026-11-09): la etiqueta única
- * (QR), la guía por voz y lo que se manda al servidor; siguen en la spec.
+ * Sucursal con multipedido V2, listado y agrupación por familia; tarea 31 con "Lectura de elementos" encendida y
+ * sin etiqueta única. Lo que la HH manda al servidor no se ve en la demo.
  */
 export const SIMULACION_INICIAL: Simulacion = {
   banderaListado: true,
@@ -73,6 +82,10 @@ export const SIMULACION_INICIAL: Simulacion = {
   agruparPorFamilia: true,
   fallaBanderaFamilia: false,
   ubicacionesUDN: false,
+  lecturaElementos: true,
+  tipoTarea: 31,
+  etiquetaUnica: false,
+  etiquetasMasAntiguas: false,
   sinProductos: false,
   cancelados: [],
   demoraCarga: 0,

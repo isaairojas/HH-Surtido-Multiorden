@@ -68,13 +68,17 @@ export type PartidaPedido = {
    * Cadena vacía = el código no tiene familia en el catálogo (va al final al agrupar).
    */
   familia: string;
+  /** El producto requiere etiqueta única (`requiereEU`): con la EU activa en la tarea, su QR se valida. */
+  requiereEU?: boolean;
+  /** Perecedero (`esPerecedero`): con EU, se comprueba que la etiqueta sea la de caducidad más próxima. */
+  perecedero?: boolean;
 };
 
-/*
- * Etiqueta única (EU) y caducidad más próxima (PEPS): fuera de la demo (decisión del 2026-11-09). En la ronda
- * funcionan como en la canónica; solo cambia que la etiqueta se relaciona con el pedido que recibe la pieza y no
- * se repite en la ronda. Ver SDD 2026-10-26-multipedido-surtido-listado · Validación de etiqueta única (EU).
+/**
+ * Etiqueta única ya surtida en la ronda y el pedido que recibió su pieza (SDD 2026-10-26-multipedido-surtido-listado ·
+ * Validación de etiqueta única (EU)): una etiqueta no se repite en la ronda y se relaciona con su pedido.
  */
+export type EtiquetaSurtida = { qr: string; pedidoId: string; codigo: string };
 
 /*
  * Campos que este modelo no tiene y que el canónico tampoco trae en IAssortmentProduct:
@@ -100,11 +104,14 @@ export type Ronda = {
   pedidos: Pedido[];
 };
 
-export type RondaState = { ronda: Ronda };
+export type RondaState = { ronda: Ronda; etiquetas?: EtiquetaSurtida[] };
 
 export type RondaAction =
-  /** Suma `cantidad` al pedido con menor orden que todavía necesita el código (lector o captura). */
-  | { type: 'surtirPorCodigo'; codigo: string; cantidad: number }
+  /**
+   * Suma `cantidad` al pedido con menor orden que todavía necesita el código (lector o captura). Con `etiqueta`
+   * (QR de etiqueta única validado), la relaciona con ese pedido.
+   */
+  | { type: 'surtirPorCodigo'; codigo: string; cantidad: number; etiqueta?: string }
   /**
    * Saca el pedido de la ronda (corporativo con orden de compra incompleto al finalizar).
    * SDD 2026-10-26-multipedido-surtido-listado · Sacar el pedido de la ronda.
@@ -722,7 +729,10 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
       const ev = evaluarSurtido(s.ronda, a.codigo, a.cantidad);
       if (!ev.ok) return s;
       const p = partidaEn(s.ronda, ev.loc);
-      return conPartida(s, ev.loc, { ...p, surtido: p.surtido + a.cantidad });
+      const surtido = conPartida(s, ev.loc, { ...p, surtido: p.surtido + a.cantidad });
+      if (!a.etiqueta) return surtido;
+      const relacion = { qr: a.etiqueta, pedidoId: s.ronda.pedidos[ev.loc.pedidoIdx].id, codigo: a.codigo };
+      return { ...surtido, etiquetas: [...(s.etiquetas ?? []), relacion] };
     }
     case 'corregir': {
       // Un pedido completo que queda incompleto se reabre solo: su partida vuelve a pedir el código.
@@ -771,7 +781,7 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
       return { ...s, ronda: { ...s.ronda, pedidos: s.ronda.pedidos.filter((p) => p.id !== a.pedidoId) } };
     }
     case 'cargar':
-      return { ronda: clonar(a.estado.ronda) };
+      return a.estado.etiquetas ? { ronda: clonar(a.estado.ronda), etiquetas: [...a.estado.etiquetas] } : { ronda: clonar(a.estado.ronda) };
     case 'reiniciar':
       return estadoInicial();
   }

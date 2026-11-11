@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { estadoInicial, pedidoCompleto, rondaReducer, tareaSinAvance, type RondaAction, type RondaState } from '../domain/ronda';
 import { SIMULACION_INICIAL, type Simulacion } from '../domain/simulacion';
 import { SIGUIENTE_RONDA } from '../mocks/ronda';
+import { hablar } from '../domain/voz';
 import type { ToastKind } from '../design-system/components/organisms/Toast/Toast';
 
 export type Etapa = 'surtido' | 'tareas';
@@ -45,6 +46,10 @@ type Store = {
    * (SDD 2026-10-26-multipedido-surtido-listado · Finalizar el surtido del pedido).
    */
   cargarSiguienteTarea: () => void;
+  /** Última lectura en voz alta: la demo la muestra también como subtítulo (`VozHost`). */
+  lectura: { id: number; texto: string } | null;
+  /** Lee en voz alta (si el navegador tiene voz) y deja el subtítulo. Quien llama decide si se debe leer. */
+  leer: (texto: string) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -77,6 +82,12 @@ export function AppStoreProvider({ children, semilla }: { children: ReactNode; s
   const mostrarToast = useCallback((t: Omit<ToastData, 'id'>) => setToast({ id: Date.now(), ...t }), []);
   const cerrarToast = useCallback(() => setToast(null), []);
 
+  const [lectura, setLectura] = useState<{ id: number; texto: string } | null>(null);
+  const leer = useCallback((texto: string) => {
+    hablar(texto);
+    setLectura({ id: Date.now(), texto });
+  }, []);
+
   const cargarSiguienteTarea = useCallback(() => {
     const siguiente = estadoInicial(SIGUIENTE_RONDA);
     pedidosAvisados.clear();
@@ -103,8 +114,10 @@ export function AppStoreProvider({ children, semilla }: { children: ReactNode; s
       listadoAbierto,
       setListadoAbierto,
       cargarSiguienteTarea,
+      lectura,
+      leer,
     }),
-    [ronda, etapa, toast, mostrarToast, cerrarToast, ultimoEscaneo, pedidosAvisados, simulacion, tareaOriginal, listadoAbierto, cargarSiguienteTarea],
+    [ronda, etapa, toast, mostrarToast, cerrarToast, ultimoEscaneo, pedidosAvisados, simulacion, tareaOriginal, listadoAbierto, cargarSiguienteTarea, lectura, leer],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

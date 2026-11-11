@@ -7,6 +7,7 @@
  * prepara, sobre la ronda de `src/mocks/ronda.ts`, el estado que describe el GIVEN de sus escenarios, con los
  * mismos números; `tests/domain/escenarios.test.mjs` lo comprueba.
  */
+import { qrEtiquetaUnica } from '../domain/codigos';
 import { estadoInicial, type PartidaPedido, type Pedido, type RondaState } from '../domain/ronda';
 import { CLIENTE_A, CLIENTE_B, partida } from '../mocks/ronda';
 import type { Semilla } from '../store/AppStore';
@@ -54,6 +55,7 @@ const negar = (codigo: string, motivo = 'Sin existencia'): Retoque => (p) =>
 /** Completa todo salvo el código indicado, que queda con `n` piezas. */
 const todoMenos = (codigo: string, n: number): Retoque => (p) => (p.codigo === codigo ? { ...p, surtido: n } : completar(p));
 const sinPromocion: Retoque = (p) => ({ ...p, promocion: null });
+const perecedero = (codigo: string): Retoque => (p) => (p.codigo === codigo ? { ...p, perecedero: true } : p);
 const sinFamilia = (codigo: string): Retoque => (p) => (p.codigo === codigo ? { ...p, familia: '' } : p);
 const y = (...fns: Retoque[]): Retoque => (p) => fns.reduce((acc, fn) => fn(acc), p);
 
@@ -181,6 +183,16 @@ const dosCorporativos = () =>
 const corporativoIncompleto = () =>
   conPedido(retocar(base(), { 0: completar, 1: surtir('0486600', 2), 2: completar }), 1, { corporativoOC: true });
 
+/** Etiquetas únicas de 0486600 de la demo: E1 y E2 (1 pieza cada una). */
+export const E1 = qrEtiquetaUnica('0486600', 1, 1);
+export const E2 = qrEtiquetaUnica('0486600', 1, 2);
+
+/** E1 ya se surtió a 1001 (1 pieza de 0486600 en A, relacionada con ese pedido). */
+const e1EnA = (s: RondaState): RondaState => ({
+  ...retocar(s, { 0: surtir('0486600', 1) }),
+  etiquetas: [{ qr: E1, pedidoId: '1001', codigo: '0486600' }],
+});
+
 /* ------------------------------------------------------------------ *
  * Semillas
  * ------------------------------------------------------------------ */
@@ -271,6 +283,21 @@ export const ESCENARIOS: Record<string, Semilla> = {
   'falla-desvincular': surtido({ ronda: conAvance(), simulacion: { fallaDesvincular: '1002' } }),
   'pedido-unico-falla-desvincular': surtido({ ronda: pedidoUnico(surtir('0486600', 1)), simulacion: { fallaDesvincular: '*' } }),
   'negado-y-surtido': surtido({ ronda: retocar(base(), { 0: y(negar('1365800', 'Producto dañado'), surtir('0486600', 1)) }) }),
+
+  /* ---- Etiqueta única (EU) ---- */
+  'eu-inactiva': surtido({ simulacion: { etiquetaUnica: false } }),
+  'eu-repetida-ronda': surtido({ ronda: e1EnA(base()), simulacion: { etiquetaUnica: true } }),
+  'eu-repetida-pedido-unico': surtido({ ronda: e1EnA(pedidoUnico()), simulacion: { etiquetaUnica: true } }),
+  'eu-caducidad': surtido({
+    ronda: retocar(primerPedidoCompleto(), { 1: perecedero('0486600'), 2: perecedero('0486600') }),
+    simulacion: { etiquetaUnica: true, etiquetasMasAntiguas: true },
+  }),
+
+  /* ---- Guía por voz ---- */
+  'voz-ronda-58': surtido({ simulacion: { tipoTarea: 58 } }),
+  'voz-pedido-unico-58': surtido({ ronda: pedidoUnico(), simulacion: { tipoTarea: 58 } }),
+  'voz-31-encendida': surtido({ simulacion: { tipoTarea: 31, lecturaElementos: true } }),
+  'voz-58-apagada': surtido({ simulacion: { tipoTarea: 58, lecturaElementos: false } }),
 
   /* ---- Imagen y familia ---- */
   'imagen-lenta': surtido({ simulacion: { demoraImagen: 3000 } }),

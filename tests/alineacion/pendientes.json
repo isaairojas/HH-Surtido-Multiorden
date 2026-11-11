@@ -1,54 +1,5 @@
 {
   "nota": "Lo que falta para que la demo cubra la spec. Solo baja: la prueba de alineación falla si algo de aquí ya está resuelto.",
-  "faltan": [
-    {
-      "cambio": "listado",
-      "requisito": "Validación de etiqueta única (EU)",
-      "escenario": "QR sin etiqueta única activa",
-      "motivo": "Fase 3: la demo no tiene la validación de etiqueta única (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "listado",
-      "requisito": "Validación de etiqueta única (EU)",
-      "escenario": "Etiqueta repetida en la ronda",
-      "motivo": "Fase 3: la demo no tiene la validación de etiqueta única (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "listado",
-      "requisito": "Validación de etiqueta única (EU)",
-      "escenario": "Etiqueta repetida en un pedido único",
-      "motivo": "Fase 3: la demo no tiene la validación de etiqueta única (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "listado",
-      "requisito": "Validación de etiqueta única (EU)",
-      "escenario": "Caducidad más próxima en una ronda",
-      "motivo": "Fase 3: la demo no tiene la validación de etiqueta única (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "cierre",
-      "requisito": "Guía por voz en el listado",
-      "escenario": "Resumen de una ronda multipedido V2",
-      "motivo": "Fase 3: la demo no tiene la guía por voz (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "cierre",
-      "requisito": "Guía por voz en el listado",
-      "escenario": "Ronda de un solo pedido",
-      "motivo": "Fase 3: la demo no tiene la guía por voz (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "cierre",
-      "requisito": "Guía por voz en el listado",
-      "escenario": "Resumen al abrir",
-      "motivo": "Fase 3: la demo no tiene la guía por voz (clarificación 16 del cambio de cierre)"
-    },
-    {
-      "cambio": "cierre",
-      "requisito": "Guía por voz en el listado",
-      "escenario": "Tarea 58 con lectura apagada",
-      "motivo": "Fase 3: la demo no tiene la guía por voz (clarificación 16 del cambio de cierre)"
-    }
-  ],
+  "faltan": [],
   "desalineados": []
 }
