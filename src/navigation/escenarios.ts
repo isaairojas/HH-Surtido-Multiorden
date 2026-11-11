@@ -3,9 +3,12 @@
  * la sucursal y el servidor (`simulacion`) y la etapa. La pantalla va en el hash (`#/surtido`).
  * Mantiene el patrón del proyecto base: la semilla se lee una vez en main.tsx.
  *
- * Cada caso del catálogo (`catalogo.ts`) apunta a una de estas semillas; varias comparten la misma.
+ * Cada caso del catálogo (`catalogo.ts`) apunta a una de estas semillas; varias comparten la misma. Cada semilla
+ * prepara, sobre la ronda de `src/mocks/ronda.ts`, el estado que describe el GIVEN de sus escenarios, con los
+ * mismos números; `tests/domain/escenarios.test.mjs` lo comprueba.
  */
 import { estadoInicial, type PartidaPedido, type Pedido, type RondaState } from '../domain/ronda';
+import { CLIENTE_A, CLIENTE_B, partida } from '../mocks/ronda';
 import type { Semilla } from '../store/AppStore';
 
 type Retoque = (p: PartidaPedido) => PartidaPedido;
@@ -19,137 +22,164 @@ function retocar(base: RondaState, cambios: Record<number, Retoque>): RondaState
   return { ...base, ronda: { ...base.ronda, pedidos } };
 }
 
+/** Quita códigos de los pedidos indicados, cuando el escenario habla de menos pedidos con ese código. */
+function sinCodigos(base: RondaState, cambios: Record<number, string[]>): RondaState {
+  const pedidos = base.ronda.pedidos.map((pedido, i) => {
+    const fuera = cambios[i];
+    return fuera ? { ...pedido, partidas: pedido.partidas.filter((x) => !fuera.includes(x.codigo)) } : pedido;
+  });
+  return { ...base, ronda: { ...base.ronda, pedidos } };
+}
+
 /** Cambia datos del pedido (p. ej. corporativo con orden de compra). */
 function conPedido(base: RondaState, idx: number, cambios: Partial<Pedido>): RondaState {
   const pedidos = base.ronda.pedidos.map((p, i) => (i === idx ? { ...p, ...cambios } : p));
   return { ...base, ronda: { ...base.ronda, pedidos } };
 }
 
-/** Deja en la ronda solo los pedidos indicados (por índice), en ese orden. */
+/** Deja en la ronda solo los pedidos indicados (por índice), en ese orden y con su letra de origen. */
 function soloPedidos(base: RondaState, idxs: number[]): RondaState {
   return { ...base, ronda: { ...base.ronda, pedidos: idxs.map((i) => base.ronda.pedidos[i]) } };
 }
 
-const completar: Retoque = (p) => ({ ...p, surtido: p.solicitado });
-const surtir = (codigo: string, n: number): Retoque => (p) => (p.codigo === codigo ? { ...p, surtido: n } : p);
-const negar = (codigo: string, motivo = 'Sin existencia'): Retoque => (p) => (p.codigo === codigo ? { ...p, motivoNegacion: motivo } : p);
-/** Completa todo salvo el código indicado, que queda con `n` piezas. */
-const todoMenos = (codigo: string, n: number): Retoque => (p) => (p.codigo === codigo ? { ...p, surtido: n } : completar(p));
-const y = (...fns: Retoque[]): Retoque => (p) => fns.reduce((acc, fn) => fn(acc), p);
-
-/** Partida del mock (primera aparición del código), para armar pedidos nuevos de la demo. */
-function partidaBase(codigo: string, solicitado: number): PartidaPedido {
-  const p = estadoInicial()
-    .ronda.pedidos.flatMap((x) => x.partidas)
-    .find((x) => x.codigo === codigo)!;
-  return { ...p, solicitado, surtido: 0, motivoNegacion: null, promocion: null, existencia: solicitado + 20 };
+/** Ronda nueva con los pedidos dados (letras A, B, C… por su lugar). */
+function rondaCon(pedidos: Pedido[]): RondaState {
+  return estadoInicial({ id: 'R-20261021-01', pedidos });
 }
 
+const completar: Retoque = (p) => ({ ...p, surtido: p.solicitado });
+const surtir = (codigo: string, n: number): Retoque => (p) => (p.codigo === codigo ? { ...p, surtido: n } : p);
+const negar = (codigo: string, motivo = 'Sin existencia'): Retoque => (p) =>
+  p.codigo === codigo ? { ...p, surtido: 0, motivoNegacion: motivo } : p;
+/** Completa todo salvo el código indicado, que queda con `n` piezas. */
+const todoMenos = (codigo: string, n: number): Retoque => (p) => (p.codigo === codigo ? { ...p, surtido: n } : completar(p));
+const sinPromocion: Retoque = (p) => ({ ...p, promocion: null });
+const sinFamilia = (codigo: string): Retoque => (p) => (p.codigo === codigo ? { ...p, familia: '' } : p);
+const y = (...fns: Retoque[]): Retoque => (p) => fns.reduce((acc, fn) => fn(acc), p);
+
 /* ------------------------------------------------------------------ *
- * Rondas
+ * Rondas (A · 1001, B · 1002, C · 1003)
  * ------------------------------------------------------------------ */
 
 const base = () => estadoInicial();
 
-function conAvanceMedio(): RondaState {
-  return retocar(base(), { 0: y(surtir('1394010', 11), surtir('0607006', 1)) });
-}
+/** 1001 con 3 de 11 de 0486600 y lo demás en 0: hay avance y hay códigos en 0. */
+const conAvance = () => retocar(base(), { 0: surtir('0486600', 3) });
 
+/** 1001 completo: 0486600 queda en A 11/11, B 0/5 y C 0/3. */
 const primerPedidoCompleto = () => retocar(base(), { 0: completar });
 
-/** El pedido 100001 solo necesita la última partida: el próximo escaneo lo cierra. */
-const primerPedidoAlFilo = () => retocar(base(), { 0: todoMenos('6200401', 7) });
+/** 0486600 solo en 1001 y 1002 ("Código en dos pedidos": 11 en A y 5 en B). */
+const arnesEnAyB = () => sinCodigos(base(), { 2: ['0486600'] });
 
-/** Ronda con una partida negada: el código 6200404 no tiene existencia suficiente. */
-const conNegado = () => retocar(base(), { 1: negar('6200404') });
+/** A 1001 solo le falta 1 pieza de 1394010, que nadie más necesita antes: el próximo surtido lo cierra. */
+const primerPedidoAlFilo = () => retocar(base(), { 0: todoMenos('1394010', 3) });
 
-/** Solo falta una pieza en todo el último pedido: el próximo escaneo cierra la ronda. */
+/** La última partida pendiente de 1001 es 0486600 (10 de 11), que 1002 también pide. */
+const primerPedidoAlFiloCompartido = () => retocar(base(), { 0: todoMenos('0486600', 10) });
+
+/** 1001 con 10 de 11 de 0486600 y le faltan otras partidas; 1002 también lo pide. */
+const cambioDePedido = () => retocar(base(), { 0: surtir('0486600', 10) });
+
+/** Solo falta 1 pieza de 2010000 en 1003: el próximo surtido resuelve la ronda. */
 const rondaAlFilo = () => retocar(base(), { 0: completar, 1: completar, 2: todoMenos('2010000', 0) });
 
-/** Al 100001 le falta 1 cinta 1394010: el próximo escaneo pasa el código al 100002. */
-const cambioDePedido = () => retocar(base(), { 0: surtir('1394010', 10) });
+/** 1001 y 1002 completos y el código en C con `n` piezas (lo demás de C completo). */
+const enC = (codigo: string, n: number) => retocar(base(), { 0: completar, 1: completar, 2: todoMenos(codigo, n) });
 
 /**
- * Limpiador 6200401 negado en el 100002 (sin existencia tras surtir el 100001): su "Kit mantenimiento"
- * queda incompleto con la cinta ya surtida. Falta 1 pieza de 2010000 para resolver la ronda.
+ * "Kit afinación" (0486600 + 2389475) completo en 1001; en 1002 se negó 2389475 con 0486600 en 5 de 5. Falta 1
+ * pieza de 2010000 en 1003 para resolver la ronda.
  */
 const promocionIncompleta = () =>
-  retocar(base(), { 0: completar, 1: y(completar, negar('6200401'), surtir('6200401', 0)), 2: todoMenos('2010000', 0) });
+  retocar(base(), { 0: completar, 1: y(completar, negar('2389475')), 2: todoMenos('2010000', 0) });
 
-/** 100001 y 100002 completos y la cinta 1394010 en C con `n` de 3. Corrección en escalera, 2026-11-09. */
-const cintaEnC = (n: number) => retocar(base(), { 0: completar, 1: completar, 2: surtir('1394010', n) });
-
-/** Un solo pedido (100001), opcionalmente retocado. */
-const pedidoUnico = (fn?: Retoque) => soloPedidos(fn ? retocar(base(), { 0: fn }) : base(), [0]);
-
-/** Tres pedidos sin códigos en común. */
-function sinCompartidos(): RondaState {
-  const s = base();
-  const pedidos = s.ronda.pedidos.map((p, i) => ({
-    ...p,
-    partidas:
-      i === 0
-        ? [partidaBase('0607006', 2), partidaBase('1458000', 2)]
-        : i === 1
-          ? [partidaBase('2012000', 3), partidaBase('6200404', 1)]
-          : [partidaBase('1978000', 1), partidaBase('2010000', 1)],
-  }));
-  return { ...s, ronda: { ...s.ronda, pedidos } };
-}
-
-/** Cinco pedidos con la cinta 1394010 en todos (máximo de 5 pedidos en la sucursal). */
-function cincoPedidos(): RondaState {
-  const s = base();
-  const extra = (id: string, cliente: string, n: number): Pedido => ({
-    id,
-    cliente: { id: cliente, nombre: cliente === 'CLI-C' ? 'TALLER MECÁNICO HERMANOS RUIZ' : 'AUTOSERVICIO EL PASO' },
-    partidas: [partidaBase('1394010', n), partidaBase('2012000', 1)],
-  });
-  return { ...s, ronda: { ...s.ronda, pedidos: [...s.ronda.pedidos, extra('100004', 'CLI-C', 2), extra('100005', 'CLI-D', 4)] } };
-}
-
-/**
- * Parciales en 100001 (relevador 1458000, 1 de 2) y 100003 (foco 2012000, 1 de 2); ningún código en 0 y la
- * promoción completa, para que solo aplique la confirmación de parciales.
- */
-const conParciales = () => retocar(base(), { 0: todoMenos('1458000', 1), 1: completar, 2: todoMenos('2012000', 1) });
-
-/**
- * Promoción incompleta en 100001 ("Kit mantenimiento": la cinta surtida y el limpiador 6200401 negado) y
- * parciales: el relevador 1458000 en A (1 de 2) y el foco 2012000 en C (1 de 2). Ningún código en 0.
- * Orden de los avisos al finalizar (revisión del 2026-11-09): promoción → parciales → confirmación.
- */
+/** Promoción incompleta en 1001 (2389475 negado) y 1003 con 2012000 parcial (1 de 2). */
 const promocionYParciales = () =>
-  retocar(base(), {
-    0: y(completar, negar('6200401'), surtir('6200401', 0), surtir('1458000', 1)),
-    1: completar,
-    2: todoMenos('2012000', 1),
-  });
+  retocar(base(), { 0: y(completar, negar('2389475')), 1: completar, 2: todoMenos('2012000', 1) });
 
 /**
- * Lo anterior más 100002 corporativo con orden de compra e incompleto (cinta 2 de 5, lo demás en 0): el
- * cierre recorre los avisos en orden. Primero el corporativo; al sacarlo, se regresa al listado sin él.
+ * Corporativo 1002 incompleto (0486600 en 2 de 5, lo demás en 0), promoción incompleta en 1001 (2389475 negado),
+ * 1394010 parcial en 1001 (2 de 4) y 2012000 parcial en 1003 (1 de 2): el cierre recorre los avisos en orden.
  */
 const cierreEnOrden = () =>
   conPedido(
     retocar(base(), {
-      0: y(completar, negar('6200401'), surtir('6200401', 0), surtir('1458000', 1)),
-      1: surtir('1394010', 2),
+      0: y(completar, negar('2389475'), surtir('1394010', 2)),
+      1: surtir('0486600', 2),
       2: todoMenos('2012000', 1),
     }),
     1,
     { corporativoOC: true },
   );
 
-/** Dos códigos sin familia en el catálogo. */
-const sinFamilia = () =>
-  retocar(base(), {
-    0: (p) => (p.codigo === '1458000' ? { ...p, familia: '' } : p),
-    2: (p) => (p.codigo === '2010000' ? { ...p, familia: '' } : p),
+/**
+ * "Parciales en varios pedidos": 0486600 con 3 de 11 en A y 5 de 5 en B, y 2389475 con 1 de 2 solo en C; lo
+ * demás completo. Sin promociones en esta ronda, para que el único aviso sea el de parciales.
+ */
+const parcialesEnVarios = () =>
+  retocar(
+    sinCodigos(base(), { 0: ['2389475'], 1: ['2389475'], 2: ['0486600'] }),
+    { 0: y(sinPromocion, todoMenos('0486600', 3)), 1: y(sinPromocion, completar), 2: todoMenos('2389475', 1) },
+  );
+
+/** 1001 con 1394010 parcial (2 de 4); lo demás completo y la promoción completa. */
+const parcialEnA = () => retocar(base(), { 0: todoMenos('1394010', 2), 1: completar, 2: completar });
+
+/** Un solo pedido (1001), opcionalmente retocado. */
+const pedidoUnico = (fn?: Retoque) => soloPedidos(fn ? retocar(base(), { 0: fn }) : base(), [0]);
+
+/** Tres pedidos sin códigos en común. */
+const sinCompartidos = () =>
+  rondaCon([
+    { id: '1001', cliente: CLIENTE_A, partidas: [partida('0486600', 11), partida('1365800', 1)] },
+    { id: '1002', cliente: CLIENTE_B, partidas: [partida('2389475', 2), partida('2012000', 3)] },
+    { id: '1003', cliente: CLIENTE_A, partidas: [partida('1394010', 3), partida('1978000', 1), partida('2010000', 1)] },
+  ]);
+
+/** Cinco pedidos con 0486600 en todos (la sucursal tiene el máximo en 5). */
+function cincoPedidos(): RondaState {
+  const s = base();
+  const extra = (id: string, n: number): Pedido => ({
+    id,
+    cliente: { id: `CLI-${id}`, nombre: id === '1004' ? 'TALLER MECÁNICO HERMANOS RUIZ' : 'AUTOSERVICIO EL PASO' },
+    partidas: [partida('0486600', n), partida('2012000', 1)],
+  });
+  return estadoInicial({ ...s.ronda, pedidos: [...s.ronda.pedidos, extra('1004', 2), extra('1005', 4)] });
+}
+
+/** Ronda de los escenarios de familias: filtro 3001 (A), batería 2001 (B) y filtro 1001 (C), en pasillos 1, 2 y 4. */
+const filtrosYBateria = () =>
+  rondaCon([
+    { id: '1001', cliente: CLIENTE_A, partidas: [partida('3001', 2)] },
+    { id: '1002', cliente: CLIENTE_B, partidas: [partida('2001', 1)] },
+    { id: '1003', cliente: CLIENTE_A, partidas: [partida('1001', 1)] },
+  ]);
+
+/** Pendientes de las familias "BUJÍA", "bomba" y "Batería". */
+const familiasConAcentos = () =>
+  rondaCon([
+    { id: '1001', cliente: CLIENTE_A, partidas: [partida('4001', 4)] },
+    { id: '1002', cliente: CLIENTE_B, partidas: [partida('5001', 1)] },
+    { id: '1003', cliente: CLIENTE_A, partidas: [partida('6001', 1)] },
+  ]);
+
+/** Los tres pedidos son corporativos con orden de compra e incompletos. */
+const tresCorporativos = () => {
+  let s = retocar(base(), { 0: surtir('0486600', 3), 1: surtir('0486600', 2), 2: surtir('0486600', 1) });
+  for (const i of [0, 1, 2]) s = conPedido(s, i, { corporativoOC: true });
+  return s;
+};
+
+/** 1002 y 1003 corporativos con orden de compra e incompletos; 1001 completo. */
+const dosCorporativos = () =>
+  conPedido(conPedido(retocar(base(), { 0: completar, 1: surtir('0486600', 2), 2: surtir('0486600', 1) }), 1, { corporativoOC: true }), 2, {
+    corporativoOC: true,
   });
 
-/** La imagen del relevador 1458000 no responde. */
-const imagenRota = () => retocar(base(), { 0: (p) => (p.codigo === '1458000' ? { ...p, imagen: './no-existe/producto-1458000.jpg' } : p) });
+/** 1002 corporativo con orden de compra e incompleto (0486600 en 2 de 5); 1001 y 1003 completos. */
+const corporativoIncompleto = () =>
+  conPedido(retocar(base(), { 0: completar, 1: surtir('0486600', 2), 2: completar }), 1, { corporativoOC: true });
 
 /* ------------------------------------------------------------------ *
  * Semillas
@@ -162,64 +192,93 @@ export const ESCENARIOS: Record<string, Semilla> = {
   /* ---- Toma de tarea y Detalle de la ronda ---- */
   tareas: tareas(),
   'detalle-ronda': tareas(),
-  'sin-multipedido-v2': tareas({ ronda: soloPedidos(base(), [0, 1]), simulacion: { multipedidoEnHH: false } }),
+  // "dos pedidos, 101 y 102": la spec usa otros folios en este escenario.
+  'sin-multipedido-v2': tareas({
+    ronda: conPedido(conPedido(soloPedidos(base(), [0, 1]), 0, { id: '101' }), 1, { id: '102' }),
+    simulacion: { multipedidoEnHH: false },
+  }),
   'pedido-unico-tarea': tareas({ ronda: pedidoUnico() }),
   'falla-bandera-conexion': tareas({ simulacion: { fallaBanderaMultipedido: 'conexion' } }),
   'falla-bandera-tiempo': tareas({ simulacion: { fallaBanderaMultipedido: 'tiempo' } }),
   'sesion-vencida': tareas({ simulacion: { fallaBanderaMultipedido: 'sesion' } }),
   'tarea-sin-productos': tareas({ simulacion: { sinProductos: true } }),
   'mismo-cliente-off': tareas({ simulacion: { mismoCliente: false } }),
+  'falla-datos-pedido': tareas({ simulacion: { fallaDatosPedido: '1002' } }),
 
-  /* ---- Listado ---- */
+  /* ---- Apertura del listado ---- */
   inicial: surtido(),
-  'con-avance': surtido({ ronda: conAvanceMedio(), ultimoEscaneo: { codigo: '0607006', pedidoId: '100001' } }),
-  'cierra-pedido': surtido({ ronda: primerPedidoAlFilo() }),
-  'primer-pedido-ok': surtido({ ronda: primerPedidoCompleto() }),
-  negado: surtido({ ronda: conNegado() }),
-  'cierra-ronda': surtido({ ronda: rondaAlFilo() }),
-  'cambio-pedido': surtido({ ronda: cambioDePedido() }),
-  promocion: surtido({ ronda: promocionIncompleta() }),
-  'pedido-unico': surtido({ ronda: pedidoUnico() }),
+  'carga-lenta': surtido({ simulacion: { demoraCarga: 3000 } }),
   'falla-carga': surtido({ simulacion: { fallaCargaRonda: true } }),
-  'sin-contenedor': surtido({ simulacion: { sinContenedor: '100002' } }),
+  'sin-contenedor': surtido({ simulacion: { sinContenedor: '1002' } }),
+  'pedido-unico': surtido({ ronda: pedidoUnico() }),
+
+  /* ---- Escaneo y lista ---- */
+  'con-avance': surtido({ ronda: conAvance(), ultimoEscaneo: { codigo: '0486600', pedidoId: '1001' } }),
+  'primer-pedido-ok': surtido({ ronda: primerPedidoCompleto() }),
+  'arnes-completo': surtido({ ronda: retocar(base(), { 0: surtir('0486600', 11), 1: surtir('0486600', 5), 2: surtir('0486600', 3) }) }),
+  negado: surtido({ ronda: retocar(base(), { 0: negar('1365800') }) }),
+  'dos-pedidos': surtido({ ronda: arnesEnAyB() }),
+  'negado-un-pedido': surtido({ ronda: retocar(arnesEnAyB(), { 0: surtir('0486600', 11), 1: negar('0486600') }) }),
   'sin-compartidos': surtido({ ronda: sinCompartidos() }),
-  'negado-un-pedido': surtido({ ronda: retocar(base(), { 0: surtir('6200401', 8), 1: negar('6200401') }) }),
-  'cinta-resuelta': surtido({ ronda: retocar(base(), { 0: surtir('1394010', 11), 1: surtir('1394010', 5), 2: negar('1394010') }) }),
-  'cinco-pedidos': surtido({ ronda: cincoPedidos(), simulacion: { mismoCliente: true } }),
+  'cierra-pedido': surtido({ ronda: primerPedidoAlFilo() }),
+  'cierra-pedido-compartido': surtido({ ronda: primerPedidoAlFiloCompartido() }),
+  'cambio-pedido': surtido({ ronda: cambioDePedido() }),
+  'solo-en-a': surtido({ ronda: sinCodigos(cambioDePedido(), { 1: ['0486600'], 2: ['0486600'] }) }),
+  'arnes-resuelto': surtido({ ronda: retocar(base(), { 0: surtir('0486600', 11), 1: surtir('0486600', 5), 2: negar('0486600') }) }),
+  'cinco-pedidos': surtido({ ronda: cincoPedidos() }),
+  'cancelado-surtiendo': surtido({ ronda: primerPedidoCompleto(), simulacion: { cancelados: ['1002'] } }),
 
   /* ---- Negar ---- */
-  'negar-parcial': surtido({ ronda: retocar(base(), { 0: surtir('1394010', 3) }) }),
-  'pedido-unico-con-avance': surtido({ ronda: pedidoUnico(surtir('0607006', 1)) }),
+  'negar-parcial': surtido({ ronda: retocar(arnesEnAyB(), { 0: surtir('0486600', 3) }) }),
+  'pedido-unico-con-avance': surtido({ ronda: pedidoUnico(surtir('0486600', 1)) }),
   'pedido-unico-corporativo': surtido({ ronda: conPedido(pedidoUnico(), 0, { corporativoOC: true }) }),
   corporativo: surtido({ ronda: conPedido(base(), 1, { corporativoOC: true }) }),
   'falla-negar': surtido({ simulacion: { fallaNegar: true } }),
 
   /* ---- Corrección (escalera) ---- */
-  correccion: surtido({ ronda: cintaEnC(2), ultimoEscaneo: { codigo: '1394010', pedidoId: '100003' } }),
-  'cinta-en-c': surtido({ ronda: cintaEnC(0) }),
+  correccion: surtido({ ronda: enC('0486600', 2), ultimoEscaneo: { codigo: '0486600', pedidoId: '1003' } }),
+  'arnes-en-c': surtido({ ronda: enC('0486600', 0) }),
+  'cinta-en-c': surtido({ ronda: enC('1394010', 0) }),
+
+  /* ---- Promoción ---- */
+  promocion: surtido({ ronda: promocionIncompleta() }),
 
   /* ---- Finalizar, sacar el corporativo, salir ---- */
+  'cierra-ronda': surtido({ ronda: rondaAlFilo() }),
   'concluida-por-otro': surtido({ ronda: rondaAlFilo(), simulacion: { concluidaPorOtro: true } }),
-  'pedido-unico-al-filo': surtido({ ronda: pedidoUnico(todoMenos('6200401', 7)) }),
-  'corporativo-incompleto': surtido({
-    ronda: conPedido(retocar(base(), { 0: completar, 1: surtir('1394010', 2), 2: completar }), 1, { corporativoOC: true }),
-  }),
-  'corporativo-sin-piezas': surtido({ ronda: conPedido(conAvanceMedio(), 1, { corporativoOC: true }) }),
-  'pedido-unico-corporativo-incompleto': surtido({ ronda: conPedido(pedidoUnico(surtir('1394010', 5)), 0, { corporativoOC: true }) }),
+  'concluida-a-mitad': surtido({ ronda: rondaAlFilo(), simulacion: { concluidaAntesDe: '1002' } }),
+  'pedido-unico-al-filo': surtido({ ronda: pedidoUnico(todoMenos('1394010', 3)) }),
+  'corporativo-incompleto': surtido({ ronda: corporativoIncompleto() }),
+  'falla-retiro': surtido({ ronda: corporativoIncompleto(), simulacion: { fallaRetiro: true } }),
+  'corporativo-sin-piezas': surtido({ ronda: conPedido(conAvance(), 1, { corporativoOC: true }) }),
+  'pedido-unico-corporativo-incompleto': surtido({ ronda: conPedido(pedidoUnico(surtir('0486600', 5)), 0, { corporativoOC: true }) }),
   'ronda-dos-corporativo': surtido({
-    ronda: conPedido(soloPedidos(retocar(base(), { 0: completar, 1: surtir('1394010', 2) }), [0, 1]), 1, { corporativoOC: true }),
+    ronda: conPedido(soloPedidos(retocar(base(), { 0: completar, 1: surtir('0486600', 2) }), [0, 1]), 1, { corporativoOC: true }),
   }),
-  parciales: surtido({ ronda: conParciales() }),
+  'tres-corporativos': surtido({ ronda: tresCorporativos() }),
+  'dos-corporativos': surtido({ ronda: dosCorporativos() }),
+  parciales: surtido({ ronda: parcialesEnVarios() }),
+  'parcial-en-a': surtido({ ronda: parcialEnA() }),
   'promocion-y-parciales': surtido({ ronda: promocionYParciales() }),
   'cierre-en-orden': surtido({ ronda: cierreEnOrden() }),
-  'falla-guardado': surtido({ ronda: rondaAlFilo(), simulacion: { fallaGuardado: '100002' } }),
-  'falla-desvincular': surtido({ ronda: conAvanceMedio(), simulacion: { fallaDesvincular: '100002' } }),
-  'pedido-unico-falla-desvincular': surtido({ ronda: pedidoUnico(surtir('0607006', 1)), simulacion: { fallaDesvincular: '*' } }),
-  'negado-y-surtido': surtido({ ronda: retocar(base(), { 0: y(negar('1458000', 'Producto dañado'), surtir('0607006', 1)) }) }),
+  'cancelado-corporativo': surtido({ ronda: cierreEnOrden(), simulacion: { cancelados: ['1002'] } }),
+  'cancelado-al-finalizar': surtido({ ronda: conAvance(), simulacion: { cancelados: ['1002'] } }),
+  'cancelado-automatico': surtido({ ronda: rondaAlFilo(), simulacion: { cancelados: ['1002'] } }),
+  'todos-cancelados': surtido({ ronda: conAvance(), simulacion: { cancelados: ['1001', '1002', '1003'] } }),
+  'falla-guardado': surtido({ ronda: rondaAlFilo(), simulacion: { fallaGuardado: '1002' } }),
+  'falla-guardado-servidor': surtido({ ronda: rondaAlFilo(), simulacion: { fallaGuardado: '1002', tipoFallaGuardado: 'servidor' } }),
+  'falla-guardado-dos-veces': surtido({ ronda: rondaAlFilo(), simulacion: { fallaGuardado: '1002', vecesFallaGuardado: 2 } }),
+  'falla-desvincular': surtido({ ronda: conAvance(), simulacion: { fallaDesvincular: '1002' } }),
+  'pedido-unico-falla-desvincular': surtido({ ronda: pedidoUnico(surtir('0486600', 1)), simulacion: { fallaDesvincular: '*' } }),
+  'negado-y-surtido': surtido({ ronda: retocar(base(), { 0: y(negar('1365800', 'Producto dañado'), surtir('0486600', 1)) }) }),
 
   /* ---- Imagen y familia ---- */
-  'imagen-rota': surtido({ ronda: imagenRota() }),
-  'sin-familia': surtido({ ronda: sinFamilia() }),
+  'imagen-lenta': surtido({ simulacion: { demoraImagen: 3000 } }),
+  'sin-familia': surtido({ ronda: retocar(base(), { 0: sinFamilia('1365800'), 2: sinFamilia('2010000') }) }),
+  'con-ubicaciones': surtido({ simulacion: { ubicacionesUDN: true } }),
+  familias: surtido({ ronda: filtrosYBateria(), simulacion: { ubicacionesUDN: true } }),
+  'familias-sin-agrupar': surtido({ ronda: filtrosYBateria(), simulacion: { ubicacionesUDN: true, agruparPorFamilia: false } }),
+  'familias-acentos': surtido({ ronda: familiasConAcentos() }),
   'familia-off': surtido({ simulacion: { agruparPorFamilia: false } }),
   'familia-falla': surtido({ simulacion: { fallaBanderaFamilia: true } }),
 };

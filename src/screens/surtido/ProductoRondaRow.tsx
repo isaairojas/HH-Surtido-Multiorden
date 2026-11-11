@@ -10,7 +10,7 @@
  * solo va en el Detalle de la ronda.
  * El desglose sustituye al badge "En N pedidos". No se incorporó al design-system compartido.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import sinImagen from '@assets/productos/producto-sin-imagen.svg';
 import { Chip } from '@ds/components/atoms/Chip/Chip';
 import { statusProducto, ubicacionLegible, type Presencia, type ProductoVista } from '../../domain/ronda';
@@ -23,6 +23,8 @@ type Props = {
   /** Último producto escaneado: fondo azul claro, como el resaltado de Revision-HH-v2. */
   marcado?: boolean;
   onClick?: () => void;
+  /** Milisegundos que tarda la imagen en llegar (simulación de la demo). */
+  demoraImagen?: number;
 };
 
 /** En 0 la etiqueta se queda blanca; parcial y completo toman los colores del chip de avance. */
@@ -35,11 +37,19 @@ const claseTag = (p: Presencia) =>
         ? styles.tagParcial
         : '';
 
-export function ProductoRondaRow({ producto: v, multipedido = true, marcado, onClick }: Props) {
+export function ProductoRondaRow({ producto: v, multipedido = true, marcado, onClick, demoraImagen = 0 }: Props) {
   const status = statusProducto(v);
   // SDD 2026-10-26-surtido-listado-imagen-familia · Imagen del producto en el listado: si la imagen no responde, la
   // imagen por defecto, con el mismo criterio que el surtido anterior.
   const [imagenRota, setImagenRota] = useState(false);
+  // "Mientras carga la imagen": la fila se pinta completa y el hueco de la foto ya tiene su tamaño (60 × 60), así
+  // que la imagen aparece sin mover las demás filas.
+  const [imagenLista, setImagenLista] = useState(demoraImagen <= 0);
+  useEffect(() => {
+    if (demoraImagen <= 0) return;
+    const t = window.setTimeout(() => setImagenLista(true), demoraImagen);
+    return () => window.clearTimeout(t);
+  }, [demoraImagen]);
 
   return (
     <button
@@ -51,7 +61,7 @@ export function ProductoRondaRow({ producto: v, multipedido = true, marcado, onC
       disabled={!onClick}
     >
       <div className={styles.foto}>
-        <img src={imagenRota ? sinImagen : v.imagen} alt="" onError={() => setImagenRota(true)} />
+        {imagenLista && <img src={imagenRota ? sinImagen : v.imagen} alt="" onError={() => setImagenRota(true)} />}
       </div>
       <div className={styles.content}>
         <div className={styles.top}>

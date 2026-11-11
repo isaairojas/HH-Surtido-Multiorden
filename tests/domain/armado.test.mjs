@@ -11,10 +11,10 @@ import assert from 'node:assert/strict';
 import { armarRonda, CONFIG_INICIAL, ordenarCola } from '../../src/domain/armado.ts';
 import { PRESETS_ARMADO, verificarPreset } from '../../src/domain/armadoEscenarios.ts';
 
-test('hay un preset por cada uno de los 46 escenarios de los dos specs, sin ids repetidos', () => {
-  assert.equal(PRESETS_ARMADO.length, 46);
-  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'elegibilidad-ronda-multipedido').length, 40);
-  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'catalogo-bandera-sucursal').length, 6);
+test('hay un preset por cada uno de los 61 escenarios de los dos specs, sin ids repetidos', () => {
+  assert.equal(PRESETS_ARMADO.length, 61);
+  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'elegibilidad-ronda-multipedido').length, 52);
+  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'catalogo-bandera-sucursal').length, 9);
   assert.equal(new Set(PRESETS_ARMADO.map((p) => p.id)).size, PRESETS_ARMADO.length);
 });
 

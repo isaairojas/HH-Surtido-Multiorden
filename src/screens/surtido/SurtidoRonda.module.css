@@ -21,3 +21,22 @@
 .full {
   width: 100%;
 }
+
+/* Mientras carga la ronda: el indicador de carga del listado de hoy, centrado y sin nada propio de la ronda. */
+.cargando {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+}
+
+.cargando img {
+  animation: girar 1s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}

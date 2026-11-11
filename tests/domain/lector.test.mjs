@@ -6,6 +6,7 @@
  * Correr con: npm run test:domain
  */
 import test from 'node:test';
+import { RONDA_PRUEBAS } from './ronda-pruebas.ts';
 import assert from 'node:assert/strict';
 
 import { etiqueta, leerCodigo, limpiarLectura } from '../../src/domain/codigos.ts';
@@ -41,34 +42,34 @@ test('sin QR en la demo, una lectura con "-F" no es código ni etiqueta', () => 
 });
 
 test('un código negado que ya nadie necesita se rechaza como "Producto negado"', () => {
-  const s = rondaReducer(estadoInicial(), { type: 'negar', codigo: '6200404', motivo: 'Sin existencia' });
+  const s = rondaReducer(estadoInicial(RONDA_PRUEBAS), { type: 'negar', codigo: '6200404', motivo: 'Sin existencia' });
   assert.deepEqual(interpretarLectura(s, '6200404'), { tipo: 'rechazo', codigo: '6200404', rechazo: 'producto-negado' });
 });
 
 test('un código que no está en la ronda se rechaza como "Código inválido"', () => {
-  assert.equal(interpretarLectura(estadoInicial(), '9999999').rechazo, 'fuera-de-ronda');
+  assert.equal(interpretarLectura(estadoInicial(RONDA_PRUEBAS), '9999999').rechazo, 'fuera-de-ronda');
 });
 
 test('sobrante: el código ya surtido pide la cantidad y con etiqueta se rechaza por mayor a la solicitada', () => {
   // 1458000 (misceláneo) solo está en 100001; 0607006 (escaneable) también.
-  let s = surtir(estadoInicial(), '1458000', 2);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1458000', 2);
   assert.deepEqual(interpretarLectura(s, '1458000'), { tipo: 'capturar', codigo: '1458000' });
   s = surtir(s, '0607006', 2);
   assert.deepEqual(interpretarLectura(s, etiqueta('0607006', 1)), { tipo: 'rechazo', codigo: '0607006', rechazo: 'excede-solicitado' });
 });
 
 test('los misceláneos siempre piden la cantidad, aunque se lea una etiqueta de 18 dígitos', () => {
-  assert.deepEqual(interpretarLectura(estadoInicial(), etiqueta('1394010', 3)), { tipo: 'capturar', codigo: '1394010' });
+  assert.deepEqual(interpretarLectura(estadoInicial(RONDA_PRUEBAS), etiqueta('1394010', 3)), { tipo: 'capturar', codigo: '1394010' });
 });
 
 test('el escaneable surte directo con la cantidad de su etiqueta', () => {
-  assert.deepEqual(interpretarLectura(estadoInicial(), etiqueta('0607006', 1)), { tipo: 'surtir', codigo: '0607006', cantidad: 1 });
+  assert.deepEqual(interpretarLectura(estadoInicial(RONDA_PRUEBAS), etiqueta('0607006', 1)), { tipo: 'surtir', codigo: '0607006', cantidad: 1 });
 });
 
 /* ---- Sacar el pedido de la ronda y letras de contenedor ---- */
 
 test('sacar un pedido conserva lo surtido de los demás y las letras de sus contenedores, sin integrar otros', () => {
-  let s = surtir(estadoInicial(), '1394010', 11);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 11);
   s = rondaReducer(s, { type: 'retirarPedido', pedidoId: '100002' });
   assert.deepEqual(s.ronda.pedidos.map((p) => p.id), ['100001', '100003']);
   assert.equal(partida(s, '100001', '1394010').surtido, 11);
@@ -83,7 +84,7 @@ test('sacar un pedido conserva lo surtido de los demás y las letras de sus cont
 });
 
 test('cargar sustituye el estado y la tarea sin avance no trae piezas ni negaciones', () => {
-  let s = surtir(estadoInicial(), '0607006', 1);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '0607006', 1);
   s = rondaReducer(s, { type: 'negar', codigo: '1458000', motivo: 'Producto dañado' });
   const limpia = tareaSinAvance(s);
   assert.ok(limpia.ronda.pedidos.every((p) => p.partidas.every((x) => x.surtido === 0 && x.motivoNegacion === null)));
@@ -93,7 +94,7 @@ test('cargar sustituye el estado y la tarea sin avance no trae piezas ni negacio
 /* ---- Finalizar ---- */
 
 test('finalizar detecta códigos en 0, pedidos con parciales y corporativos incompletos', () => {
-  const s = estadoInicial();
+  const s = estadoInicial(RONDA_PRUEBAS);
   assert.equal(hayCodigosSinSurtir(s.ronda), true);
   const parcial = surtir(s, '1458000', 1);
   assert.deepEqual(pedidosConParciales(parcial.ronda).map((x) => x.pedido.id), ['100001']);
@@ -103,7 +104,7 @@ test('finalizar detecta códigos en 0, pedidos con parciales y corporativos inco
 
 test('los parciales se listan una vez por código, con su desglose por contenedor', () => {
   // 1458000: A 1 de 2. 2012000: B 3 de 3 y C 1 de 2.
-  let s = surtir(estadoInicial(), '1458000', 1);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1458000', 1);
   s = surtir(surtir(s, '2012000', 3), '2012000', 1);
   const cod = codigosParciales(s.ronda);
   assert.deepEqual(cod.map((v) => v.codigo).sort(), ['1458000', '2012000']);
@@ -113,7 +114,7 @@ test('los parciales se listan una vez por código, con su desglose por contenedo
 
 test('negar la promoción deja sus piezas fuera de la cuenta de parciales', () => {
   // A: cinta completa y limpiador 6200401 negado: la promoción "Kit mantenimiento" queda incompleta en A.
-  let s = surtir(estadoInicial(), '1394010', 11);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 11);
   s = rondaReducer(s, { type: 'negar', codigo: '6200401', motivo: 'Sin existencia' });
   const pendiente = promocionesPendientes(s.ronda).find((p) => p.pedidos.some((x) => x.pedidoId === '100001'));
   assert.ok(pendiente, 'la promoción de A queda pendiente');
@@ -126,12 +127,12 @@ test('negar la promoción deja sus piezas fuera de la cuenta de parciales', () =
 /* ---- Familia ---- */
 
 test('dentro de una familia los códigos van de menor a mayor', () => {
-  const v = ordenarPorFamilia(productosVista(estadoInicial().ronda));
+  const v = ordenarPorFamilia(productosVista(estadoInicial(RONDA_PRUEBAS).ronda));
   assert.deepEqual(v.filter((x) => x.familia === 'Foco').map((x) => x.codigo), ['1978000', '2010000', '2012000']);
 });
 
 test('los códigos sin familia van juntos al final, de menor a mayor', () => {
-  const s = estadoInicial();
+  const s = estadoInicial(RONDA_PRUEBAS);
   const pedidos = s.ronda.pedidos.map((p) => ({
     ...p,
     partidas: p.partidas.map((x) => (x.codigo === '1458000' || x.codigo === '2010000' ? { ...x, familia: '' } : x)),
@@ -143,7 +144,7 @@ test('los códigos sin familia van juntos al final, de menor a mayor', () => {
 /* ---- Cantidad surtida del detalle, como el V2 (clarify 28) ---- */
 
 test('el detalle valida la cantidad como hoy: cero, mayor a la solicitada y mayor a la existencia', () => {
-  const s = estadoInicial();
+  const s = estadoInicial(RONDA_PRUEBAS);
   const cinta = partida(s, '100001', '1394010'); // 11 solicitadas, 31 en existencia
   assert.equal(evaluarCantidadDetalle(cinta, 0), 'cantidad-cero');
   assert.equal(evaluarCantidadDetalle(cinta, 12), 'excede-solicitado');
@@ -152,7 +153,7 @@ test('el detalle valida la cantidad como hoy: cero, mayor a la solicitada y mayo
 });
 
 test('fijar la cantidad cambia solo el pedido indicado y una inválida no cambia nada', () => {
-  let s = surtir(estadoInicial(), '1394010', 3);
+  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 3);
   s = rondaReducer(s, { type: 'fijarCantidad', codigo: '1394010', pedidoId: '100001', cantidad: 7 });
   assert.equal(partida(s, '100001', '1394010').surtido, 7);
   assert.equal(partida(s, '100002', '1394010').surtido, 0);
@@ -161,7 +162,7 @@ test('fijar la cantidad cambia solo el pedido indicado y una inválida no cambia
 });
 
 test('al llegar a lo solicitado desde el detalle, las siguientes piezas van al siguiente pedido', () => {
-  const s = surtir(estadoInicial(), '1394010', 3);
+  const s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 3);
   const sig = rondaReducer(s, { type: 'fijarCantidad', codigo: '1394010', pedidoId: '100001', cantidad: 11 });
   const c = cambioDePedido(s.ronda, sig.ronda, '1394010');
   assert.equal(c?.desde.id, '100001');

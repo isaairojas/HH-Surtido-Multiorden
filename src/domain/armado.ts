@@ -12,7 +12,16 @@
  * - Criterios acumulativos: el candidato cumple todos los activos (misma dirección, código compartido, tope).
  * - Un código cuenta una partida en cada pedido donde está (en dos pedidos suma dos).
  * - El tope solo filtra candidatos: el ancla no se descarta, pero entonces ningún candidato cabe.
- * - `BndRondaXPedido` prevalece sobre el multipedido V2.
+ *
+ * Orden de evaluación con otras banderas (spec del 2026-11-11, sustituye a "BndRondaXPedido prevalece"):
+ * - `Bandera_RevisionPedidoEnHH` activa: no se evalúan candidatos; cada pedido se surte solo.
+ * - `BndUnificarRondasMontos` activa y el ancla viene de una división: entran todas sus partes y no se
+ *   evalúan más candidatos. Si el ancla no viene de una división, se evalúan los candidatos como siempre.
+ * - `BndRondaXPedido` no impide evaluar candidatos: solo describe lo que pasa cuando ninguno cumple (el ancla
+ *   se surte en su propia ronda).
+ *
+ * Pedidos retenidos o cancelados: un cancelado no llega a la cola; tampoco los pedidos que aún no estaban en
+ * la cola al entrar a la ventana de tareas (`ConfigSucursal.momentoVentana`), que es cuando se arma la ronda.
  */
 
 export type Servicio = 'local' | 'foraneo';
@@ -32,6 +41,8 @@ export type PedidoCola = {
   direccion: string;
   /** Retenido manualmente desde Exodus Sucursales. */
   retenido?: boolean;
+  /** Cancelado: no llega a la cola de pedidos por surtir. */
+  cancelado?: boolean;
   /** Parte de una factura dividida por montos. */
   division?: { id: string; parte: number };
   /** Tiempo estimado de surtido, en minutos. */
@@ -53,6 +64,13 @@ export type BanderasArmado = {
 };
 
 export type ConfigSucursal = BanderasArmado & {
+  /** Número de sucursal, solo para mostrarlo (los parámetros son por sucursal). */
+  sucursal?: number;
+  /**
+   * Momento en que se entra a la ventana de tareas ("AAAA-MM-DD HH:MM"): la ronda se arma entonces, con los
+   * pedidos que ya están en la cola. Los creados después no son candidatos. Sin valor: toda la cola cuenta.
+   */
+  momentoVentana?: string;
   /** Máximo de pedidos por ronda. Sin configurar: 3. */
   maxPedidos?: number;
   /** Tope acumulado de partidas por ronda (`Parametro_MultipedidoMaxPartidas`). Sin configurar: 15. */
@@ -98,7 +116,7 @@ export const CONFIG_INICIAL: ConfigSucursal = {
 };
 
 /** Cómo se arma la ronda según las banderas de la sucursal. */
-export type ModoArmado = 'actual' | 'por-pedido' | 'unificado' | 'multipedido';
+export type ModoArmado = 'actual' | 'unificado' | 'multipedido';
 
 export type ResultadoRegla = 'cumple' | 'no-cumple' | 'no-aplica';
 export type ReglaEvaluada = { regla: string; resultado: ResultadoRegla; detalle: string };
@@ -119,6 +137,8 @@ export type ResultadoArmado = {
   explicacionModo: string;
   /** La cola en el orden en que se atiende. */
   cola: PedidoCola[];
+  /** Pedidos que no llegan a la cola (cancelados o creados después de entrar a la ventana de tareas). */
+  fueraDeCola: { pedido: PedidoCola; motivo: string }[];
   ancla: PedidoCola | null;
   /** Candidatos dentro de la ventana, en el orden en que se evaluaron. */
   evaluados: EvaluacionCandidato[];
@@ -156,7 +176,24 @@ const sumaMinutos = (pedidos: PedidoCola[]) => pedidos.reduce((n, p) => n + p.mi
 
 /** Arma la ronda del primero de la cola con las reglas de la sucursal. */
 export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): ResultadoArmado {
-  const ordenada = ordenarCola(cola);
+  // Pedidos retenidos o cancelados: un cancelado no llega a la cola. La ronda se arma al entrar a la ventana de
+  // tareas: lo que se creó después todavía no es candidato.
+  const fueraDeCola: ResultadoArmado['fueraDeCola'] = [];
+  const enCola = cola.filter((p) => {
+    if (p.cancelado) {
+      fueraDeCola.push({ pedido: p, motivo: 'cancelado: no llega a la cola de pedidos por surtir.' });
+      return false;
+    }
+    if (config.momentoVentana && p.creado > config.momentoVentana) {
+      fueraDeCola.push({
+        pedido: p,
+        motivo: `se creó a las ${p.creado.slice(11)}, después de entrar a la ventana de tareas (${config.momentoVentana.slice(11)}): no es candidato de esta ronda.`,
+      });
+      return false;
+    }
+    return true;
+  });
+  const ordenada = ordenarCola(enCola);
   const maxPedidos = config.maxPedidos ?? MAX_PEDIDOS_INICIAL;
   const maxPartidas = config.maxPartidas ?? MAX_PARTIDAS_INICIAL;
   const ancla = ordenada[0] ?? null;
@@ -166,6 +203,7 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     modo,
     explicacionModo,
     cola: ordenada,
+    fueraDeCola,
     ancla,
     evaluados: [],
     fueraDeVentana: [],
@@ -179,24 +217,23 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     notas,
   });
 
-  if (!ancla) return base('multipedido', 'La cola está vacía: no hay ronda que armar.');
-
   // Convivencia con las rondas actuales.
   if (!config.Bandera_MultipedidoEnHH) {
-    notas.push('El simulador no reproduce el algoritmo actual (OrdenesporSurtir): solo muestra que el multipedido V2 no interviene.');
+    notas.push(
+      'El simulador no reproduce el algoritmo actual (OrdenesporSurtir: hasta 6 documentos, preferencia por la zona y tiempo por franja): solo muestra que el multipedido V2 no interviene.',
+    );
     return base(
       'actual',
-      'Bandera_MultipedidoEnHH inactiva: la ronda se arma con el algoritmo actual y se surte como hoy. No se evalúan candidatos multipedido V2.',
+      'Bandera_MultipedidoEnHH inactiva: la ronda se arma con el algoritmo actual, que sigue prefiriendo órdenes de la misma zona, y se surte como hoy. No se evalúan candidatos multipedido V2.',
     );
   }
-  if (config.BndRondaXPedido) {
-    const resto = ordenada.slice(1).map((p) => p.folio);
-    if (resto.length) notas.push(`${resto.join(', ')} se surte${resto.length > 1 ? 'n' : ''} en otra ronda, cada uno solo.`);
+  if (!ancla) {
     return base(
-      'por-pedido',
-      'BndRondaXPedido activa: prevalece la ronda por pedido. Cada pedido se surte en su propia ronda y no se evalúan candidatos, aunque cumplan los criterios.',
+      'multipedido',
+      'Al entrar a la ventana de tareas no hay pedidos por surtir: no se arma ninguna ronda y la ventana se comporta como hoy cuando no hay tareas.',
     );
   }
+  // Orden de evaluación con otras banderas: con surtido unificado no se evalúan candidatos.
   if (config.Bandera_RevisionPedidoEnHH) {
     notas.push('Los demás pedidos se surten cada uno solo, en su turno.');
     return base(
@@ -205,7 +242,9 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     );
   }
 
-  const multipedido = 'Bandera_MultipedidoEnHH activa: la ronda se arma con las reglas del multipedido V2.';
+  const multipedido =
+    'Bandera_MultipedidoEnHH activa: la ronda se arma al entrar a la ventana de tareas, con las reglas del multipedido V2.' +
+    (config.BndRondaXPedido ? ' BndRondaXPedido activa no impide evaluar candidatos: solo si ninguno cumple, el ancla se surte en su propia ronda.' : '');
 
   // Pedidos retenidos: el ancla retenida no arma ronda multipedido V2.
   if (ancla.retenido) {
@@ -216,7 +255,8 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
   const ronda: PedidoCola[] = [ancla];
   const evaluados: EvaluacionCandidato[] = [];
 
-  // División de factura por montos: con la bandera, todas las partes del ancla entran juntas, aunque superen topes.
+  // División de factura por montos (se evalúa primero): con la bandera, todas las partes del ancla entran juntas,
+  // aunque superen topes, y no se evalúan más candidatos.
   const divisionAncla = config.BndUnificarRondasMontos ? ancla.division : undefined;
   if (divisionAncla) {
     for (const p of ordenada.slice(1)) {
@@ -229,10 +269,11 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
         reglas: [],
       });
     }
+    notas.push(`El ancla viene de la división ${divisionAncla.id}: esa regla prevalece y no se evalúan más candidatos.`);
   }
 
   const restantes = ordenada.slice(1).filter((p) => !ronda.includes(p));
-  const lugares = Math.max(0, maxPedidos - ronda.length);
+  const lugares = divisionAncla ? 0 : Math.max(0, maxPedidos - ronda.length);
   const ventana = restantes.slice(0, lugares);
   const fueraDeVentana = restantes.slice(lugares);
 
@@ -262,7 +303,15 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     notas.push(`La franja de la ronda se amplió de ${config.minutosFranja} a ${minutosFranjaRonda} min para que entraran los pedidos que cumplen las demás reglas.`);
   }
 
-  if (ronda.length === 1 && evaluados.length > 0) notas.push(`Ningún candidato cumple: ${ancla.folio} se surte solo, igual que hoy.`);
+  if (ronda.length === 1 && evaluados.length > 0) {
+    notas.push(
+      `Ningún candidato cumple: ${ancla.folio} se surte solo, igual que hoy${config.BndRondaXPedido ? ', en su propia ronda (lo que exige BndRondaXPedido)' : ''}.`,
+    );
+  }
+  const divisiones = new Set(
+    evaluados.filter((e) => e.estado === 'rechazado' && e.pedido.division && config.BndUnificarRondasMontos).map((e) => e.pedido.division!.id),
+  );
+  for (const id of divisiones) notas.push(`Las partes de la factura ${id} se surten juntas en su propia ronda.`);
   if (ventana.length === 0 && !divisionAncla) notas.push(`No hay candidatos en la ventana: ${ancla.folio} se surte solo.`);
   const rechazados = evaluados.filter((e) => e.estado !== 'integrado').map((e) => e.pedido.folio);
   if (rechazados.length && ronda.length > 1) {
@@ -273,6 +322,7 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     modo: 'multipedido',
     explicacionModo: multipedido,
     cola: ordenada,
+    fueraDeCola,
     ancla,
     evaluados,
     fueraDeVentana,

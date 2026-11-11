@@ -7,6 +7,7 @@
  * cliente se repite en la ronda (FR-003) y `Bandera_MultipedidoMismoCliente` está activa (simulada en la demo). Diferencia con la referencia: no se muestra la hora de captura
  * porque el modelo de la ronda no la trae.
  */
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import assignment from '@assets/icons/assignment.svg';
 import person from '@assets/icons/person-panel.svg';
@@ -21,10 +22,16 @@ import styles from './DetalleRonda.module.css';
 
 export function DetalleRonda() {
   const navigate = useNavigate();
-  const { ronda, simulacion } = useStore();
+  const { ronda, simulacion, mostrarToast } = useStore();
   const pedidos = ronda.ronda.pedidos;
   // Con la bandera inactiva ningún panel lleva "Mismo cliente".
   const compartido = simulacion.mismoCliente ? clientesRepetidos(pedidos) : new Set<string>();
+  // SDD 2026-10-26-multipedido-surtido-listado · Pedidos de la ronda en la tarea asignada · "Falla la consulta de los
+  // datos de un pedido": alerta global y el panel de ese pedido sin cliente ni totales, sin bloquear la tarea.
+  const sinDatos = simulacion.fallaDatosPedido;
+  useEffect(() => {
+    if (sinDatos) mostrarToast({ kind: 'error', title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' });
+  }, [sinDatos, mostrarToast]);
 
   return (
     <div className={styles.screen}>
@@ -33,29 +40,34 @@ export function DetalleRonda() {
         <div className={styles.contenido}>
           {pedidos.map((p, idx) => {
             const piezas = p.partidas.reduce((n, x) => n + x.solicitado, 0);
+            const conDatos = p.id !== sinDatos;
             return (
               <section key={p.id} className={styles.panel} aria-label={`Contenedor ${letraDe(ronda.ronda, idx)}`}>
                 <div className={styles.encabezado}>
                   <ContenedorLetra letra={letraDe(ronda.ronda, idx)} />
-                  <div className={styles.totales}>
-                    <b>{piezas} pz</b>
-                    <span>
-                      {p.partidas.length} {p.partidas.length === 1 ? 'código' : 'códigos'}
-                    </span>
-                  </div>
+                  {conDatos && (
+                    <div className={styles.totales}>
+                      <b>{piezas} pz</b>
+                      <span>
+                        {p.partidas.length} {p.partidas.length === 1 ? 'código' : 'códigos'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className={styles.divider} />
                 <div className={styles.dato}>
                   <img src={assignment} alt="" width={20} height={20} />
                   <span className={styles.texto}>#{p.id}</span>
                 </div>
-                <div className={styles.dato}>
-                  <img src={person} alt="" width={20} height={20} />
-                  <span className={styles.texto} title={p.cliente.nombre}>
-                    {p.cliente.nombre}
-                  </span>
-                  {compartido.has(p.cliente.id) && <span className={styles.badge}>Mismo cliente</span>}
-                </div>
+                {conDatos && (
+                  <div className={styles.dato}>
+                    <img src={person} alt="" width={20} height={20} />
+                    <span className={styles.texto} title={p.cliente.nombre}>
+                      {p.cliente.nombre}
+                    </span>
+                    {compartido.has(p.cliente.id) && <span className={styles.badge}>Mismo cliente</span>}
+                  </div>
+                )}
               </section>
             );
           })}

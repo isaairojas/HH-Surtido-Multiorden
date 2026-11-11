@@ -40,7 +40,8 @@ import { Divider } from '@ds/components/atoms/Divider/Divider';
 import { Button } from '@ds/components/atoms/Button/Button';
 import { sonar } from '../../domain/sonidos';
 import { interpretarLectura } from '../../domain/lector';
-import { agrupaPorFamilia } from '../../domain/simulacion';
+import { ordenDelListado } from '../../domain/simulacion';
+import cargandoIcono from '@assets/icons/loading-indicator.svg';
 import {
   AVISOS,
   cambioDePedido,
@@ -55,7 +56,7 @@ import {
   pedidoActualIdx,
   pedidoCompleto,
   piezasEn,
-  ordenarPorFamilia,
+  ordenarListado,
   productosVista,
   promocionesPendientes,
   proximaPartidaPara,
@@ -82,6 +83,8 @@ type Aviso =
   | { tipo: 'parciales'; codigos: ProductoVista[] }
   | { tipo: 'sin-surtir' }
   | { tipo: 'corporativo'; idx: number }
+  | { tipo: 'cancelado'; idx: number }
+  | { tipo: 'sin-pedidos' }
   | { tipo: 'guardado-fallido'; idx: number }
   | { tipo: 'concluida' }
   | { tipo: 'salir' };
@@ -89,6 +92,13 @@ type Aviso =
 const TEXTO_ERROR_CARGA = 'Lo sentimos, no ha sido posible cargar la información necesaria. Por favor, regresa al menú principal.';
 /** `taskAssortmentUnfinished` de `es.ts`: la falla de red al finalizar (único lugar con la alerta de conexión). */
 const TEXTO_ERROR_RED = 'Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo.';
+/**
+ * Falla del servidor al finalizar: mismas opciones que la de red (escenario "Falla el guardado por un error del
+ * servidor"). PROVISIONAL: la spec no cita el texto; falta que Producto lo confirme.
+ */
+const TEXTO_ERROR_SERVIDOR = 'Ocurrió un error en el servidor al finalizar el surtido. Por favor, vuelve a intentarlo.';
+/** Alerta global de error de la HH (la misma de la falla de conexión al consultar banderas). */
+const ALERTA_ERROR = { kind: 'error' as const, title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' };
 
 export function SurtidoRonda() {
   const navigate = useNavigate();
@@ -125,18 +135,22 @@ export function SurtidoRonda() {
   const [menu, setMenu] = useState(false);
   /** El aviso de finalizar se ofrece solo una vez; después, con "Finalizar surtido". */
   const finalizarOfrecido = useRef(false);
-  /** Pedidos cuyo guardado ya falló una vez: el reintento pasa. */
-  const reintentados = useRef<Set<string>>(new Set());
+  /** Veces que ya falló el guardado de cada pedido (`simulacion.vecesFallaGuardado` las limita). */
+  const fallosGuardado = useRef<Map<string, number>>(new Map());
   /** Evita abrir dos veces el listado (StrictMode monta los efectos dos veces). */
   const abriendo = useRef(false);
+  /**
+   * Mientras carga la ronda: el mismo indicador que al abrir una tarea de un solo pedido, sin nada propio de la
+   * ronda (SDD 2026-10-26-multipedido-surtido-listado · Vinculación del pedido al abrir · "Mientras carga la ronda").
+   */
+  const [cargando, setCargando] = useState(!listadoAbierto && simulacion.demoraCarga > 0);
 
   const r = ronda.ronda;
   const multipedido = esMultipedidoV2(r);
 
-  // Agrupación por familia (Bandera_AgrupacionFamiliaEnHH): las familias quedan juntas y en orden
-  // alfabético, sin rótulo, con sus códigos de menor a mayor; los códigos sin familia al final. Si la
-  // consulta falla, se trata como inactiva.
-  const comoListado = (v: ProductoVista[]) => (agrupaPorFamilia(simulacion) ? ordenarPorFamilia(v) : v);
+  // Orden del V2: secciones Pendientes, Parciales, Negados y Completados sin encabezados; dentro, por familia
+  // (Bandera_AgrupacionFamiliaEnHH; si su consulta falla, inactiva), ubicación (Bandera_UbicacionesUDN) o código.
+  const comoListado = (v: ProductoVista[]) => ordenarListado(v, ordenDelListado(simulacion));
   const productos = comoListado(productosVista(r));
   const c = conteosRonda(r);
   const idxActual = pedidoActualIdx(r);
@@ -152,13 +166,24 @@ export function SurtidoRonda() {
   useEffect(() => {
     if (listadoAbierto || abriendo.current) return;
     abriendo.current = true;
-    if (simulacion.fallaCargaRonda) {
-      return setAviso({ tipo: 'error-carga' });
+    const abrir = () => {
+      setCargando(false);
+      if (simulacion.fallaCargaRonda) {
+        return setAviso({ tipo: 'error-carga' });
+      }
+      if (simulacion.sinContenedor && r.pedidos.some((p) => p.id === simulacion.sinContenedor)) {
+        return setAviso({ tipo: 'error-carga' });
+      }
+      setListadoAbierto(true);
+    };
+    if (simulacion.demoraCarga > 0) {
+      const t = window.setTimeout(abrir, simulacion.demoraCarga);
+      return () => {
+        window.clearTimeout(t);
+        abriendo.current = false;
+      };
     }
-    if (simulacion.sinContenedor && r.pedidos.some((p) => p.id === simulacion.sinContenedor)) {
-      return setAviso({ tipo: 'error-carga' });
-    }
-    setListadoAbierto(true);
+    abrir();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,6 +203,10 @@ export function SurtidoRonda() {
    */
   const intentarFinalizar = (manual: boolean) => {
     setMenu(false);
+    // Antes que nada, un pedido cancelado (SDD 2026-11-05-multipedido-surtido-listado-cierre · Pedido cancelado
+    // durante el surtido): mientras se surte, el listado no se entera.
+    const cancelado = r.pedidos.findIndex((p) => simulacion.cancelados.includes(p.id));
+    if (cancelado >= 0) return setAviso({ tipo: 'cancelado', idx: cancelado });
     const corp = corporativoIncompleto(r);
     if (corp >= 0) return setAviso({ tipo: 'corporativo', idx: corp });
     if (manual && hayCodigosSinSurtir(r)) return setAviso({ tipo: 'sin-surtir' });
@@ -214,7 +243,14 @@ export function SurtidoRonda() {
     }
     for (let i = desde; i < r.pedidos.length; i++) {
       const p = r.pedidos[i];
-      if (simulacion.fallaGuardado === p.id && !reintentados.current.has(p.id)) {
+      // Otro usuario concluyó la ronda a mitad del guardado: lo ya registrado no se deshace.
+      if (simulacion.concluidaAntesDe === p.id) {
+        return setAviso({ tipo: 'concluida' });
+      }
+      const fallos = fallosGuardado.current.get(p.id) ?? 0;
+      if (simulacion.fallaGuardado === p.id && fallos < simulacion.vecesFallaGuardado) {
+        fallosGuardado.current.set(p.id, fallos + 1);
+        // "Reintentar" sigue desde este pedido: los ya registrados no se vuelven a registrar.
         return setAviso({ tipo: 'guardado-fallido', idx: i });
       }
     }
@@ -238,13 +274,38 @@ export function SurtidoRonda() {
    */
   const sacarCorporativo = (idx: number) => {
     const p = r.pedidos[idx];
+    // Falla el retiro: alerta global de error y el pedido sigue en la ronda y en el listado.
+    if (simulacion.fallaRetiro) {
+      setAviso(null);
+      sonar('error');
+      return mostrarToast(ALERTA_ERROR);
+    }
+    quitarDeLaRonda(p);
+    sonar('ok');
+    mostrarToast({ kind: 'success', title: 'Pedido retirado de la ronda', message: 'Aparta la mercancía ya surtida y repórtalo para su validación.' });
+  };
+
+  /** Pedido cancelado aceptado: sale de la ronda y se regresa a la ventana principal para volver a confirmar. */
+  const aceptarCancelado = (idx: number) => {
+    quitarDeLaRonda(r.pedidos[idx]);
+    sonar('ok');
+  };
+
+  /**
+   * Quita el pedido de tarjetas, filas y desglose (los demás conservan su letra). Si la ronda se queda sin pedidos,
+   * la tarea se cancela (SDD 2026-11-05-multipedido-surtido-listado-cierre · La ronda se queda sin pedidos).
+   */
+  const quitarDeLaRonda = (p: Pedido) => {
     dispatch({ type: 'retirarPedido', pedidoId: p.id });
     pedidosAvisados.delete(p.id);
     if (ultimoEscaneo?.pedidoId === p.id) setUltimoEscaneo(null);
-    sonar('ok');
-    mostrarToast({ kind: 'success', title: 'Pedido retirado de la ronda', message: 'Aparta la mercancía ya surtida y repórtalo para su validación.' });
-    if (r.pedidos.length - 1 === 0) cerrarListado('/tareas', true);
-    else setAviso(null);
+    setAviso(r.pedidos.length - 1 === 0 ? { tipo: 'sin-pedidos' } : null);
+  };
+
+  /** La ronda se quedó sin pedidos: no se registra surtido; la tarea se cancela y se pasa a la siguiente. */
+  const rondaSinPedidos = () => {
+    cargarSiguienteTarea();
+    navigate('/tareas');
   };
 
   /** Salir: desvincula todos los contenedores o ninguno, y descarta lo registrado, negaciones incluidas. */
@@ -359,7 +420,12 @@ export function SurtidoRonda() {
       <AppHeader backLabel="Menú" onBack={() => setAviso({ tipo: 'salir' })} onMenu={() => setMenu(true)} />
 
       <ContentPanel title="Surtido de órdenes" bottom={124} scroll>
-        {aviso?.tipo !== 'error-carga' && (
+        {cargando && (
+          <div className={styles.cargando} role="status" aria-label="Cargando">
+            <img src={cargandoIcono} alt="" width={48} height={48} />
+          </div>
+        )}
+        {!cargando && aviso?.tipo !== 'error-carga' && (
           <>
             <OrderProgress
               titulo="Avance de la ronda"
@@ -381,6 +447,7 @@ export function SurtidoRonda() {
                   <ProductoRondaRow
                     producto={v}
                     multipedido={multipedido}
+                    demoraImagen={simulacion.demoraImagen}
                     marcado={ultimoEscaneo?.codigo === v.codigo}
                     onClick={() => navigate(`/detalle/${v.codigo}`)}
                   />
@@ -392,7 +459,7 @@ export function SurtidoRonda() {
       </ContentPanel>
 
       <BottomBar>
-        {completa ? (
+        {cargando ? null : completa ? (
           // Ya no hay nada que escanear: solo queda confirmar el cierre (o resolver una promoción).
           <Button variant="default" label="Finalizar surtido" className={styles.full} onClick={() => intentarFinalizar(false)} />
         ) : (
@@ -457,13 +524,13 @@ export function SurtidoRonda() {
           multipedido={multipedido}
           onCerrar={() => setAviso(null)}
           onGuardar={() => guardar()}
-          onReintentar={(idx) => {
-            reintentados.current.add(r.pedidos[idx].id);
-            guardar(idx);
-          }}
+          errorServidor={simulacion.tipoFallaGuardado === 'servidor'}
+          onReintentar={(idx) => guardar(idx)}
           onCancelarGuardado={cancelarGuardado}
           onSacar={sacarCorporativo}
-          onConcluida={() => cerrarListado('/tareas', true)}
+          onAceptarCancelado={aceptarCancelado}
+          onSinPedidos={rondaSinPedidos}
+          onConcluida={rondaSinPedidos}
           onErrorCarga={() => cerrarListado('/tareas', false)}
           onSalir={salir}
         />
@@ -480,11 +547,14 @@ function AvisoListado({
   aviso,
   pedidos,
   multipedido,
+  errorServidor,
   onCerrar,
   onGuardar,
   onReintentar,
   onCancelarGuardado,
   onSacar,
+  onAceptarCancelado,
+  onSinPedidos,
   onConcluida,
   onErrorCarga,
   onSalir,
@@ -492,11 +562,14 @@ function AvisoListado({
   aviso: Aviso;
   pedidos: Pedido[];
   multipedido: boolean;
+  errorServidor: boolean;
   onCerrar: () => void;
   onGuardar: () => void;
   onReintentar: (idx: number) => void;
   onCancelarGuardado: () => void;
   onSacar: (idx: number) => void;
+  onAceptarCancelado: (idx: number) => void;
+  onSinPedidos: () => void;
   onConcluida: () => void;
   onErrorCarga: () => void;
   onSalir: () => void;
@@ -579,7 +652,7 @@ function AvisoListado({
             { label: 'Reintentar', onClick: () => onReintentar(aviso.idx) },
           ]}
         >
-          <TextoAviso>{TEXTO_ERROR_RED}</TextoAviso>
+          <TextoAviso>{errorServidor ? TEXTO_ERROR_SERVIDOR : TEXTO_ERROR_RED}</TextoAviso>
           {/* Nombra el pedido que falló. No lista los ya registrados: al cancelar no se conserva ninguno. */}
           {multipedido && (
             <DatosAviso
@@ -592,6 +665,24 @@ function AvisoListado({
         </AvisoModal>
       );
     }
+    case 'cancelado': {
+      const p = pedidos[aviso.idx];
+      return (
+        <AvisoModal titulo="Pedido cancelado" tipo="error" botones={[{ label: 'Aceptar', onClick: () => onAceptarCancelado(aviso.idx) }]}>
+          <TextoAviso>
+            El pedido <b>{p?.id}</b> fue cancelado. Aparta la mercancía ya surtida y repórtalo para su validación.
+          </TextoAviso>
+          {multipedido && <DatosAviso filas={[{ etiqueta: 'Contenedor', valor: letra(aviso.idx) }]} />}
+        </AvisoModal>
+      );
+    }
+    case 'sin-pedidos':
+      // PROVISIONAL: la spec pide avisar "que la ronda ya no tiene pedidos" sin citar el texto.
+      return (
+        <AvisoModal titulo="Ronda sin pedidos" tipo="error" botones={[{ label: 'Aceptar', onClick: onSinPedidos }]}>
+          <TextoAviso>La ronda ya no tiene pedidos, así que la tarea se canceló. Regresa a la asignación de tareas.</TextoAviso>
+        </AvisoModal>
+      );
     case 'concluida':
       return (
         <AvisoModal titulo="Error" tipo="error" botones={[{ label: 'Aceptar', onClick: onConcluida }]}>

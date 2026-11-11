@@ -375,6 +375,45 @@ export function ordenarPorFamilia(v: ProductoVista[]): ProductoVista[] {
   );
 }
 
+/** Secciones del listado V2 (`getProductSections`), en su orden. No llevan encabezado y las vacías no se pintan. */
+const SECCION: Record<OrderItemStatus, number> = { 'no-iniciado': 0, parcial: 1, negado: 2, completado: 3 };
+
+/** Compara dos ubicaciones como el V2: zona, pasillo, torre y nivel, en ese orden. */
+const compararUbicacion = (a: Ubicacion, b: Ubicacion) => {
+  for (let i = 0; i < 4; i++) {
+    const d = a[i].localeCompare(b[i], 'es', { numeric: true, sensitivity: 'base' });
+    if (d) return d;
+  }
+  return 0;
+};
+
+const compararCodigo = (a: ProductoVista, b: ProductoVista) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true });
+
+/**
+ * Orden del listado, como el V2 de hoy (`AssortmentTaskController.getProductSections`): secciones Pendientes,
+ * Parciales, Negados y Completados, sin encabezados y sin pintar las vacías, así que un código cambia de lugar al
+ * cambiar de estado. Dentro de cada sección, por ubicación con `Bandera_UbicacionesUDN` o, si no, por código.
+ * Con `Bandera_AgrupacionFamiliaEnHH`, dentro de cada sección manda la familia (alfabética, sin distinguir
+ * mayúsculas ni acentos) y, dentro de la familia, el código: la ubicación ya no ordena. Los códigos sin familia van
+ * al final de su sección.
+ * SDD 2026-10-26-surtido-listado-imagen-familia · Agrupación por familia / Orden dentro de la agrupación por familia.
+ */
+export function ordenarListado(v: ProductoVista[], o: { familia: boolean; ubicaciones: boolean }): ProductoVista[] {
+  const sinFamilia = (p: ProductoVista) => (p.familia.trim() ? 0 : 1);
+  return [...v].sort((a, b) => {
+    const seccion = SECCION[statusProducto(a)] - SECCION[statusProducto(b)];
+    if (seccion) return seccion;
+    if (o.familia) {
+      return (
+        sinFamilia(a) - sinFamilia(b) ||
+        a.familia.localeCompare(b.familia, 'es', { sensitivity: 'base' }) ||
+        compararCodigo(a, b)
+      );
+    }
+    return (o.ubicaciones ? compararUbicacion(a.ubicacion, b.ubicacion) : 0) || compararCodigo(a, b);
+  });
+}
+
 export function productoVista(r: Ronda, codigo: string): ProductoVista | undefined {
   return productosVista(r).find((v) => v.codigo === codigo);
 }

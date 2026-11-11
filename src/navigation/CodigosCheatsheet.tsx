@@ -10,8 +10,8 @@
  */
 import { useState } from 'react';
 import { etiqueta } from '../domain/codigos';
-import { agrupaPorFamilia } from '../domain/simulacion';
-import { letraDe, ordenarPorFamilia, partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
+import { ordenDelListado } from '../domain/simulacion';
+import { letraDe, ordenarListado, partidaEn, productosVista, proximaPartidaPara, statusDeEstado } from '../domain/ronda';
 import { useStore } from '../store/AppStore';
 import styles from './CodigosCheatsheet.module.css';
 
@@ -51,7 +51,7 @@ export function CodigosCheatsheet() {
 
   // Mismo orden que la lista de surtido.
   const vista = productosVista(ronda.ronda);
-  const productos = agrupaPorFamilia(simulacion) ? ordenarPorFamilia(vista) : vista;
+  const productos = ordenarListado(vista, ordenDelListado(simulacion));
 
   const copiar = async (texto: string, marca: string) => {
     if (!(await alPortapapeles(texto))) return;

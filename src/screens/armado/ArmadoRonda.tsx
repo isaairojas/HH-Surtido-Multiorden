@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   armarRonda,
   NOMBRES_BANDERAS,
+  type ConfigSucursal,
   type EvaluacionCandidato,
   type ModoArmado,
   type PedidoCola,
@@ -30,7 +31,6 @@ const CAPACIDADES: { id: PresetArmado['capacidad']; titulo: string }[] = [
 
 const MODOS: Record<ModoArmado, string> = {
   actual: 'Algoritmo actual',
-  'por-pedido': 'Ronda por pedido',
   unificado: 'Surtido unificado',
   multipedido: 'Multipedido V2',
 };
@@ -153,26 +153,36 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
         {preset.enListado ? (
           <section className={styles.tarjeta}>
             <h3 className={styles.seccionTitulo}>Este escenario ocurre durante el surtido</h3>
-            <p className={styles.texto}>
-              El retiro de un pedido corporativo se hace desde el listado de la HH (Requirement: Sacar el pedido de la
-              ronda). Ábrelo desde el panel de escenarios de la demo, en el escenario del corporativo retirado: ahí se ve
-              qué pedido salió, de qué ronda y con qué órdenes iba.
-            </p>
+            <p className={styles.texto}>{preset.textoListado}</p>
           </section>
         ) : (
-          resultado && <Resultado preset={preset} r={resultado} />
+          resultado && (
+            <>
+              <Resultado cfg={preset.config} r={resultado} />
+              {preset.otraSucursal && (
+                <>
+                  <h2 className={styles.escenarioTitulo}>
+                    {preset.otraSucursal.config.sucursal ? `Sucursal ${preset.otraSucursal.config.sucursal}` : 'Otra sucursal'}, misma cola
+                  </h2>
+                  <Resultado
+                    cfg={preset.otraSucursal.config}
+                    r={armarRonda(preset.cola, preset.otraSucursal.config)}
+                  />
+                </>
+              )}
+            </>
+          )
         )}
       </main>
     </div>
   );
 }
 
-function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) {
-  const cfg = preset.config;
+function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
   return (
     <>
       <section className={styles.tarjeta}>
-        <h3 className={styles.seccionTitulo}>Configuración de la sucursal</h3>
+        <h3 className={styles.seccionTitulo}>Configuración de la sucursal{cfg.sucursal ? ` ${cfg.sucursal}` : ''}</h3>
         <p className={styles.ayuda}>
           Configuración de ejemplo para reproducir el escenario. En la sucursal, las banderas, los parámetros y la franja
           viven donde ya se configuran; la demo no fija sus valores.
@@ -197,6 +207,13 @@ function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) 
             valor={`${cfg.minutosFranja} min`}
             nota="si un candidato cumple todo y se pasa, la franja de la ronda se amplía"
           />
+          {cfg.momentoVentana && (
+            <Parametro
+              nombre="Entrada a la ventana de tareas"
+              valor={cfg.momentoVentana.slice(11)}
+              nota="la ronda se arma en ese momento"
+            />
+          )}
         </div>
       </section>
 
@@ -256,6 +273,15 @@ function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) 
             </tbody>
           </table>
         </div>
+        {r.fueraDeCola.length > 0 && (
+          <ul className={styles.notas}>
+            {r.fueraDeCola.map((x) => (
+              <li key={x.pedido.folio}>
+                <b>{x.pedido.folio}</b> no llega a la cola: {x.motivo}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className={styles.tarjeta}>
@@ -297,7 +323,7 @@ function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) 
           <Total
             nombre="Partidas"
             valor={r.totalPartidas}
-            limite={preset.config.Bandera_MultipedidoTopePartidas ? r.maxPartidas : undefined}
+            limite={cfg.Bandera_MultipedidoTopePartidas ? r.maxPartidas : undefined}
           />
           <Total
             nombre="Minutos"
