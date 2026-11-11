@@ -1,6 +1,6 @@
 /**
- * Pruebas del simulador del armado de la ronda multi-orden (SDD 2026-10-26-multiorden-armado-ronda).
- * Una prueba por escenario de los specs `elegibilidad-ronda-multiorden` y `catalogo-bandera-sucursal`:
+ * Pruebas del simulador del armado de la ronda multipedido V2 (SDD 2026-10-26-multipedido-armado-ronda).
+ * Una prueba por escenario de los specs `elegibilidad-ronda-multipedido` y `catalogo-bandera-sucursal`:
  * cada preset de `armadoEscenarios.ts` declara lo que el spec espera y `verificarPreset` lo compara.
  *
  * Correr con: node --import ./tests/domain/loader.mjs --test tests/domain/armado.test.mjs
@@ -13,7 +13,7 @@ import { PRESETS_ARMADO, verificarPreset } from '../../src/domain/armadoEscenari
 
 test('hay un preset por cada uno de los 46 escenarios de los dos specs, sin ids repetidos', () => {
   assert.equal(PRESETS_ARMADO.length, 46);
-  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'elegibilidad-ronda-multiorden').length, 40);
+  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'elegibilidad-ronda-multipedido').length, 40);
   assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'catalogo-bandera-sucursal').length, 6);
   assert.equal(new Set(PRESETS_ARMADO.map((p) => p.id)).size, PRESETS_ARMADO.length);
 });

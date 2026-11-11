@@ -1,5 +1,5 @@
 /**
- * Card de producto para el surtido multi-orden.
+ * Card de producto para el surtido multipedido V2.
  * Interfaz: card 15:1528 de la propuesta A (`Solicitud anticipada Uber`, rama feature-surtido-multipedido;
  * archivo "Handheld for Claude"): foto, código, chip de avance de la ronda, ubicación y desglose por
  * contenedor ("A 0/2 · B 0/2"), coloreado según el estado de cada pedido.
@@ -18,8 +18,8 @@ import styles from './ProductoRondaRow.module.css';
 
 type Props = {
   producto: ProductoVista;
-  /** Con un solo pedido la fila es la de hoy: sin desglose por contenedor. Por defecto, multi-orden. */
-  multiorden?: boolean;
+  /** Con un solo pedido la fila es la de hoy: sin desglose por contenedor. Por defecto, multipedido V2. */
+  multipedido?: boolean;
   /** Último producto escaneado: fondo azul claro, como el resaltado de Revision-HH-v2. */
   marcado?: boolean;
   onClick?: () => void;
@@ -35,7 +35,7 @@ const claseTag = (p: Presencia) =>
         ? styles.tagParcial
         : '';
 
-export function ProductoRondaRow({ producto: v, multiorden = true, marcado, onClick }: Props) {
+export function ProductoRondaRow({ producto: v, multipedido = true, marcado, onClick }: Props) {
   const status = statusProducto(v);
   // SDD 2026-10-26-surtido-listado-imagen-familia · Imagen del producto en el listado: si la imagen no responde, la
   // imagen por defecto, con el mismo criterio que el surtido anterior.
@@ -68,7 +68,7 @@ export function ProductoRondaRow({ producto: v, multiorden = true, marcado, onCl
             </span>
           ))}
         </div>
-        {multiorden && (
+        {multipedido && (
           <div className={styles.desglose}>
             {v.presencias.map((p) => (
               <span key={p.pedidoId} className={`${styles.tag} ${claseTag(p)}`} title={`Pedido ${p.pedidoId}`}>

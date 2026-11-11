@@ -1,13 +1,13 @@
 /**
- * Modales del surtido multi-orden.
+ * Modales del surtido multipedido V2.
  *
  * `CantidadModal` replica "Ingresa la cantidad surtida en contenedor" (Figma 3236:16208),
  * ya implementado en el proyecto hermano `Solicitud anticipada Uber`.
  *
  * `NegarProductoModal` parte del bottom sheet "Selección de motivo negado" de
  * Revision-HH-v2 (FR-017/FR-018): datos del producto y desplegable con los 4 motivos del
- * catálogo; Aceptar permanece inhabilitado hasta elegir uno. Propio del multi-orden
- * (SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el detalle): el aviso y la lista
+ * catálogo; Aceptar permanece inhabilitado hasta elegir uno. Propio del multipedido V2
+ * (SDD 2026-10-26-multipedido-surtido-listado · Negar producto desde el detalle): el aviso y la lista
  * de pedidos afectados, para que quede claro que también se niegan los pedidos que
  * todavía no se surten y que se retira lo ya surtido.
  *
@@ -188,7 +188,7 @@ export function NegarProductoModal({
 }
 
 /* ---------- Cambio de pedido de un código ----------
-   SDD 2026-10-26-multiorden-surtido-listado · Avisos de cambio de pedido. Sin nodo en Figma: lo pidieron en la
+   SDD 2026-10-26-multipedido-surtido-listado · Avisos de cambio de pedido. Sin nodo en Figma: lo pidieron en la
    sesión del 2026-10-21 ("recuerda que esto va al siguiente contenedor"). Desde el 2026-11-09 (clarify
    14-16) sigue el patrón de los demás modales del sistema y solo confirma lo terminado: "Pedido surtido" y un
    solo bloque gris de datos (como "Selección de motivo negado") con el contenedor en el azul del listado, el
@@ -247,7 +247,7 @@ export function CambioPedidoModal({
 }
 
 /* ---------- Corrección de surtido ----------
-   SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido (clarify del 2026-11-09, filas 9-13).
+   SDD 2026-10-26-multipedido-surtido-listado · Corregir la cantidad surtida de un pedido (clarify del 2026-11-09, filas 9-13).
    Sin nodo en Figma. Confirma antes de corregir: pedido, código y contenedor, sin las piezas surtidas.
    "Aceptar" deja el pedido en 0 y regresa al detalle; "Rechazar" no cambia nada. Botones con texto en vez
    de los íconos ✕ / ✓ de Figma, por decisión de Producto. */

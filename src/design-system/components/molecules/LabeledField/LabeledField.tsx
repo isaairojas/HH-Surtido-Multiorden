@@ -10,7 +10,7 @@ import styles from './LabeledField.module.css';
 type Props = {
   label: ReactNode;
   value: ReactNode;
-  /** Ancho fijo de 80 px (Código / Ubicación…) o ancho por contenido con relleno de 18 px (Empleado "9029"). */
+  /** Ancho fijo de 80 px (Código / Ubicación…) o ancho por contenido con relleno de 18 px (número de empleado). */
   labelWidth?: 'fixed' | 'hug';
   valueBold?: boolean;
   valueAlign?: 'start' | 'center';

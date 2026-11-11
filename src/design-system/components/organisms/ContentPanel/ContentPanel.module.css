@@ -42,7 +42,7 @@
 }
 
 /* Contenido scrollable con el título fijo (prop `scroll`).
-   Añadido para el surtido multi-orden: ver nota en ContentPanel.tsx. */
+   Añadido para el surtido multipedido V2: ver nota en ContentPanel.tsx. */
 .scroll {
   display: flex;
   flex: 1 1 auto;

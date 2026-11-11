@@ -1,6 +1,6 @@
 /**
- * Simulador del armado de la ronda multi-orden (SDD 2026-10-26-multiorden-armado-ronda) para validar en pantalla cada
- * escenario de `elegibilidad-ronda-multiorden` y `catalogo-bandera-sucursal`.
+ * Simulador del armado de la ronda multipedido V2 (SDD 2026-10-26-multipedido-armado-ronda) para validar en pantalla cada
+ * escenario de `elegibilidad-ronda-multipedido` y `catalogo-bandera-sucursal`.
  *
  * Es una página de back-office, no una pantalla de la HH: el armado lo resuelve el servidor y la HH recibe
  * la ronda ya armada. Por eso ocupa todo el ancho y se pinta por encima del marco de 430 px.
@@ -24,7 +24,7 @@ import { PRESETS_ARMADO, presetArmado, verificarPreset, type PresetArmado } from
 import styles from './ArmadoRonda.module.css';
 
 const CAPACIDADES: { id: PresetArmado['capacidad']; titulo: string }[] = [
-  { id: 'elegibilidad-ronda-multiorden', titulo: 'Elegibilidad de la ronda' },
+  { id: 'elegibilidad-ronda-multipedido', titulo: 'Elegibilidad de la ronda' },
   { id: 'catalogo-bandera-sucursal', titulo: 'Catálogo de banderas y parámetros' },
 ];
 
@@ -32,7 +32,7 @@ const MODOS: Record<ModoArmado, string> = {
   actual: 'Algoritmo actual',
   'por-pedido': 'Ronda por pedido',
   unificado: 'Surtido unificado',
-  multiorden: 'Multi-orden',
+  multipedido: 'Multipedido V2',
 };
 
 const letra = (i: number) => String.fromCharCode(65 + i);
@@ -68,9 +68,9 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
       <aside className={styles.lateral} aria-label="Escenarios del armado">
         <header className={styles.lateralHead}>
           <span className={styles.etiqueta}>Back-end · simulador</span>
-          <h1 className={styles.titulo}>Armado de ronda multi-orden</h1>
+          <h1 className={styles.titulo}>Armado de ronda multipedido V2</h1>
           <p className={styles.subtitulo}>
-            SDD <code>2026-10-26-multiorden-armado-ronda</code>. {coinciden} de {verificables} escenarios coinciden con el spec.
+            SDD <code>2026-10-26-multipedido-armado-ronda</code>. {coinciden} de {verificables} escenarios coinciden con el spec.
           </p>
           <button type="button" className={styles.volver} onClick={() => navigate('/tareas')}>
             ← Volver a la HH
@@ -190,7 +190,7 @@ function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) 
             nombre="Tope de partidas por ronda"
             valor={r.maxPartidas}
             inicial={cfg.maxPartidas === undefined}
-            nota={cfg.Bandera_MultiordenTopePartidas ? undefined : 'no aplica: bandera inactiva'}
+            nota={cfg.Bandera_MultipedidoTopePartidas ? undefined : 'no aplica: bandera inactiva'}
           />
           <Parametro
             nombre="Tiempo máximo de la franja"
@@ -297,7 +297,7 @@ function Resultado({ preset, r }: { preset: PresetArmado; r: ResultadoArmado }) 
           <Total
             nombre="Partidas"
             valor={r.totalPartidas}
-            limite={preset.config.Bandera_MultiordenTopePartidas ? r.maxPartidas : undefined}
+            limite={preset.config.Bandera_MultipedidoTopePartidas ? r.maxPartidas : undefined}
           />
           <Total
             nombre="Minutos"

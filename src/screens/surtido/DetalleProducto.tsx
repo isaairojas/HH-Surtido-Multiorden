@@ -1,8 +1,8 @@
 /**
- * Detalle de producto del surtido multi-orden.
+ * Detalle de producto del surtido multipedido V2.
  * Base: "Detalle de producto" (Figma 3199:6362), ya implementado en `Solicitud anticipada Uber`.
  *
- * Añadidos propios del multi-orden, sin respaldo en Figma (FIGMA_REPLICA.md):
+ * Añadidos propios del multipedido V2, sin respaldo en Figma (FIGMA_REPLICA.md):
  * - Desglose por pedido (FR-013): una fila por cada pedido donde vive el código,
  *   con su progreso individual y el motivo cuando está negado.
  * - El pedido en surtido es el de menor orden que todavía necesita el código (FR-015/FR-016), señalado con
@@ -14,15 +14,15 @@
  * solicitado y se valida al regresar (cero, mayor a la solicitada, mayor a la existencia). Igual para todos los
  * productos; sin marca "Misceláneo" (fila 7). Negado: "Negar producto" inhabilitado y se muestra el motivo.
  *
- * Corrección en escalera (SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido,
+ * Corrección en escalera (SDD 2026-10-26-multipedido-surtido-listado · Corregir la cantidad surtida de un pedido,
  * filas 9-18): la cantidad solo baja corrigiendo. "Corregir {letra}" apunta al último pedido con piezas del
  * código (el en curso o, si está en 0, el anterior) y pide confirmación con `ConfirmarCorreccionModal`; al
  * aceptar, ese pedido queda en 0 y el botón pasa al anterior.
  *
- * Negar (SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el detalle): niega el pedido en
+ * Negar (SDD 2026-10-26-multipedido-surtido-listado · Negar producto desde el detalle): niega el pedido en
  * proceso y todos los posteriores, retirando lo surtido; el modal lista los pedidos afectados.
  *
- * Indicadores del desglose (SDD 2026-10-26-multiorden-surtido-listado · Desglose por pedido en el detalle): el pedido
+ * Indicadores del desglose (SDD 2026-10-26-multipedido-surtido-listado · Desglose por pedido en el detalle): el pedido
  * que se está surtiendo va resaltado en azul con "Surtiendo" (era rojo hasta el 2026-11-02); los demás van en
  * gris, como inhabilitados. El chip conserva el color de su estatus (completo en verde).
  * Cuando el surtido pasa el código a otro pedido se avisa con `CambioPedidoModal`.
@@ -47,7 +47,7 @@ import { sonar } from '../../domain/sonidos';
 import {
   AVISOS,
   cambioDePedido,
-  esMultiorden,
+  esMultipedidoV2,
   evaluarCantidadDetalle,
   partidaACorregir,
   partidaEn,
@@ -138,14 +138,14 @@ export function DetalleProducto() {
 
   /**
    * "Negar producto". Con un solo pedido se conservan las restricciones de hoy (cantidad surtida en 0 y
-   * corporativo con orden de compra). En la ronda multi-orden ya no se exige el 0 (la cascada retira lo
+   * corporativo con orden de compra). En la ronda multipedido V2 ya no se exige el 0 (la cascada retira lo
    * surtido), pero un corporativo con orden de compra entre los afectados bloquea la negación de todos.
-   * SDD 2026-10-26-multiorden-surtido-listado · Restricciones para negar.
+   * SDD 2026-10-26-multipedido-surtido-listado · Restricciones para negar.
    */
   const pedirNegacion = () => {
     const pedidos = ronda.ronda.pedidos;
     if (aNegar.some((a) => pedidos[a.pedidoIdx]?.corporativoOC)) return setNegacionBloqueada('corporativo');
-    if (!esMultiorden(ronda.ronda) && aNegar.some((a) => a.surtido > 0)) return setNegacionBloqueada('con-piezas');
+    if (!esMultipedidoV2(ronda.ronda) && aNegar.some((a) => a.surtido > 0)) return setNegacionBloqueada('con-piezas');
     setNegando(true);
   };
 

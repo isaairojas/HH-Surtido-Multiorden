@@ -4,7 +4,7 @@
  * que EscenariosPanel a la derecha) y no altera la lógica de negocio.
  *
  * Adaptado del `ProductosCheatsheet` de `Solicitud anticipada Uber`. La diferencia del
- * multi-orden: un código puede vivir en varios pedidos, así que cada ficha muestra el
+ * multipedido V2: un código puede vivir en varios pedidos, así que cada ficha muestra el
  * desglose y marca a qué pedido entraría el próximo escaneo (regla FR-010). Los datos salen
  * del store, no de los mocks, para que la tabla siga el avance real de la ronda.
  */

@@ -162,11 +162,11 @@ export const ESCENARIOS: Record<string, Semilla> = {
   /* ---- Toma de tarea y Detalle de la ronda ---- */
   tareas: tareas(),
   'detalle-ronda': tareas(),
-  'sin-multiorden': tareas({ ronda: soloPedidos(base(), [0, 1]), simulacion: { multiordenEnHH: false } }),
+  'sin-multipedido-v2': tareas({ ronda: soloPedidos(base(), [0, 1]), simulacion: { multipedidoEnHH: false } }),
   'pedido-unico-tarea': tareas({ ronda: pedidoUnico() }),
-  'falla-bandera-conexion': tareas({ simulacion: { fallaBanderaMultiorden: 'conexion' } }),
-  'falla-bandera-tiempo': tareas({ simulacion: { fallaBanderaMultiorden: 'tiempo' } }),
-  'sesion-vencida': tareas({ simulacion: { fallaBanderaMultiorden: 'sesion' } }),
+  'falla-bandera-conexion': tareas({ simulacion: { fallaBanderaMultipedido: 'conexion' } }),
+  'falla-bandera-tiempo': tareas({ simulacion: { fallaBanderaMultipedido: 'tiempo' } }),
+  'sesion-vencida': tareas({ simulacion: { fallaBanderaMultipedido: 'sesion' } }),
   'tarea-sin-productos': tareas({ simulacion: { sinProductos: true } }),
   'mismo-cliente-off': tareas({ simulacion: { mismoCliente: false } }),
 

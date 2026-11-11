@@ -1,5 +1,5 @@
 /**
- * Avisos de la demo que ya existen hoy en el listado V2 (textos de `es.ts`) o que el multi-orden les añade:
+ * Avisos de la demo que ya existen hoy en el listado V2 (textos de `es.ts`) o que el multipedido V2 les añade:
  * finalizar, parciales, códigos sin surtir, pedido corporativo, salir, fallas del servidor. Mismo patrón de
  * los demás modales del sistema (ModalSheet con ícono, título, divisor y botones con texto).
  *
@@ -93,7 +93,7 @@ export function DatosAviso({ filas }: { filas: { etiqueta: string; valor: ReactN
 /**
  * Menú ⋮ del listado: "Finalizar surtido" (finalizar de forma manual), como en el V2. "Repetir audio" no está:
  * la guía por voz quedó fuera de la demo (2026-11-09).
- * SDD 2026-11-05-multiorden-surtido-listado-cierre · Bloqueos y fallas al finalizar.
+ * SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al finalizar.
  */
 export function MenuListado({ onFinalizar, onCerrar }: { onFinalizar: () => void; onCerrar: () => void }) {
   return (

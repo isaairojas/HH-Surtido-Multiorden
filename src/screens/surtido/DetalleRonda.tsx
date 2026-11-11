@@ -1,10 +1,10 @@
 /**
- * Detalle de la ronda — pantalla previa al surtido multi-orden.
+ * Detalle de la ronda — pantalla previa al surtido multipedido V2.
  * Interfaz: "Detalle de la ronda" 34:2 (archivo "Handheld for Claude", Zf1wV1oULSD14o7TPW4da9), ya implementada
  * en la propuesta A de `Solicitud anticipada Uber` (rama feature-surtido-multipedido).
  *
  * Un panel por contenedor: letra, piezas y códigos del pedido, folio y cliente; "Mismo cliente" cuando el
- * cliente se repite en la ronda (FR-003) y `Bandera_MultiordenMismoCliente` está activa (simulada en la demo). Diferencia con la referencia: no se muestra la hora de captura
+ * cliente se repite en la ronda (FR-003) y `Bandera_MultipedidoMismoCliente` está activa (simulada en la demo). Diferencia con la referencia: no se muestra la hora de captura
  * porque el modelo de la ronda no la trae.
  */
 import { useNavigate } from 'react-router-dom';

@@ -1,5 +1,5 @@
 /**
- * Pantalla principal del surtido multi-orden.
+ * Pantalla principal del surtido multipedido V2.
  * Lista agregada por código: una fila por producto único de la ronda, con
  * imagen y avance por contenedor ("A 0/2 · B 0/2"). "Mismo cliente" solo va en el Detalle de la ronda.
  * El escaneo se dirige al pedido pendiente con menor orden que todavía lo necesite.
@@ -8,7 +8,7 @@
  * de la ronda (FR-020): mira el estado del store, así que también reacciona a los
  * cambios hechos en el detalle del producto al volver a la lista.
  *
- * SDD 2026-10-26-multiorden-surtido-listado:
+ * SDD 2026-10-26-multipedido-surtido-listado:
  * - Vinculación del pedido al abrir: cada pedido con su contenedor virtual; si falla la carga o falta un
  *   contenedor, no se abre ni se vincula ninguno (lo simula `simulacion`).
  * - Avisos de cambio de pedido: si un escaneo deja completo el código en un pedido que sigue abierto, se
@@ -19,7 +19,7 @@
  * - Finalizar el surtido del pedido / Sacar el pedido de la ronda: confirmación, un registro por pedido,
  *   un solo guardado de la ronda y, si un corporativo con orden de compra está incompleto, sacarlo: regresa
  *   al listado sin ese pedido (ni tarjeta, ni filas, ni desglose), sin integrar otros y con las letras fijas.
- * SDD 2026-11-05-multiorden-surtido-listado-cierre:
+ * SDD 2026-11-05-multipedido-surtido-listado-cierre:
  * - Salir del listado deshace el vínculo: todo o nada; si falla un pedido, se queda en la pantalla.
  * - Bloqueos y fallas al finalizar: códigos sin surtir, una sola confirmación de parciales con los códigos
  *   agrupados como en el listado y guardado por pedido con "Tarea incompleta" (reintentar / cancelar).
@@ -47,7 +47,7 @@ import {
   codigosParciales,
   conteosRonda,
   corporativoIncompleto,
-  esMultiorden,
+  esMultipedidoV2,
   evaluarSurtido,
   hayCodigosSinSurtir,
   letraDe,
@@ -82,7 +82,7 @@ type Aviso =
   | { tipo: 'parciales'; codigos: ProductoVista[] }
   | { tipo: 'sin-surtir' }
   | { tipo: 'corporativo'; idx: number }
-  | { tipo: 'guardado-fallido'; idx: number; registrados: string[] }
+  | { tipo: 'guardado-fallido'; idx: number }
   | { tipo: 'concluida' }
   | { tipo: 'salir' };
 
@@ -103,6 +103,7 @@ export function SurtidoRonda() {
     tareaOriginal,
     listadoAbierto,
     setListadoAbierto,
+    cargarSiguienteTarea,
   } = useStore();
   const scanRef = useRef<ScanInputHandle>(null);
   const [capturando, setCapturando] = useState<string | null>(null);
@@ -130,7 +131,7 @@ export function SurtidoRonda() {
   const abriendo = useRef(false);
 
   const r = ronda.ronda;
-  const multiorden = esMultiorden(r);
+  const multipedido = esMultipedidoV2(r);
 
   // Agrupación por familia (Bandera_AgrupacionFamiliaEnHH): las familias quedan juntas y en orden
   // alfabético, sin rótulo, con sus códigos de menor a mayor; los códigos sin familia al final. Si la
@@ -201,24 +202,33 @@ export function SurtidoRonda() {
   /**
    * Registra un `FillOrderFull` por pedido, con su contenedor, y guarda la ronda una sola vez. Si el registro
    * de un pedido falla, se detiene ahí. (Las etiquetas únicas se relacionarían por pedido; fuera de la demo.)
+   *
+   * Sin errores, no hay pantalla de resumen: se vuelve a la asignación de tareas con la siguiente tarea ya
+   * cargada y el toast "Surtido finalizado" (SDD 2026-10-26-multipedido-surtido-listado · Finalizar el surtido
+   * del pedido · "El cierre no muestra resumen de la ronda", clarificación 39).
    */
-  const guardar = (desde = 0, registrados: string[] = []) => {
+  const guardar = (desde = 0) => {
     setAviso(null);
     if (simulacion.concluidaPorOtro) {
       return setAviso({ tipo: 'concluida' });
     }
-    const hechos = [...registrados];
     for (let i = desde; i < r.pedidos.length; i++) {
       const p = r.pedidos[i];
       if (simulacion.fallaGuardado === p.id && !reintentados.current.has(p.id)) {
-        return setAviso({ tipo: 'guardado-fallido', idx: i, registrados: hechos });
+        return setAviso({ tipo: 'guardado-fallido', idx: i });
       }
-      hechos.push(p.id);
     }
-    cerrarListado('/ronda-terminada', false);
+    cargarSiguienteTarea();
+    sonar('ok');
+    mostrarToast({ kind: 'success', title: 'Surtido finalizado', message: '¡Se completó la ronda de surtido exitosamente!' });
+    navigate('/tareas');
   };
 
-  /** Cancelar tras la falla: lo ya registrado se conserva en el servidor; la HH desvincula el resto y vuelve. */
+  /**
+   * Cancelar tras la falla: se desvincula la tarea completa, ningún pedido conserva lo registrado y la tarea
+   * queda pendiente, como hoy (SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al
+   * finalizar, clarificación 12).
+   */
   const cancelarGuardado = () => cerrarListado('/tareas', true);
 
   /**
@@ -362,7 +372,7 @@ export function SurtidoRonda() {
 
             {/* Avance individual por pedido; el resaltado es el pedido que se está surtiendo
                 (ninguno hasta el primer escaneo). Con un solo pedido, el listado es el de hoy. */}
-            {multiorden && <ContenedoresResumen pedidos={r.pedidos} actualIdx={idxMarcado} />}
+            {multipedido && <ContenedoresResumen pedidos={r.pedidos} actualIdx={idxMarcado} />}
 
             <div className={styles.list}>
               {productos.map((v, idx) => (
@@ -370,7 +380,7 @@ export function SurtidoRonda() {
                   {idx > 0 && <Divider variant="list" />}
                   <ProductoRondaRow
                     producto={v}
-                    multiorden={multiorden}
+                    multipedido={multipedido}
                     marcado={ultimoEscaneo?.codigo === v.codigo}
                     onClick={() => navigate(`/detalle/${v.codigo}`)}
                   />
@@ -444,12 +454,12 @@ export function SurtidoRonda() {
         <AvisoListado
           aviso={aviso}
           pedidos={r.pedidos}
-          multiorden={multiorden}
+          multipedido={multipedido}
           onCerrar={() => setAviso(null)}
           onGuardar={() => guardar()}
-          onReintentar={(idx, registrados) => {
+          onReintentar={(idx) => {
             reintentados.current.add(r.pedidos[idx].id);
-            guardar(idx, registrados);
+            guardar(idx);
           }}
           onCancelarGuardado={cancelarGuardado}
           onSacar={sacarCorporativo}
@@ -463,13 +473,13 @@ export function SurtidoRonda() {
 }
 
 /**
- * Los avisos de cierre y salida, con los textos de hoy (`es.ts`) y lo que el multi-orden les añade. Los botones
+ * Los avisos de cierre y salida, con los textos de hoy (`es.ts`) y lo que el multipedido V2 les añade. Los botones
  * siguen al V2: ✕ / ✓ en las confirmaciones (`textActions={false}`), texto en "Tarea incompleta" y en salir.
  */
 function AvisoListado({
   aviso,
   pedidos,
-  multiorden,
+  multipedido,
   onCerrar,
   onGuardar,
   onReintentar,
@@ -481,11 +491,11 @@ function AvisoListado({
 }: {
   aviso: Aviso;
   pedidos: Pedido[];
-  multiorden: boolean;
+  multipedido: boolean;
   onCerrar: () => void;
   onGuardar: () => void;
-  onReintentar: (idx: number, registrados: string[]) => void;
-  onCancelarGuardado: (idx: number, registrados: string[]) => void;
+  onReintentar: (idx: number) => void;
+  onCancelarGuardado: () => void;
   onSacar: (idx: number) => void;
   onConcluida: () => void;
   onErrorCarga: () => void;
@@ -518,7 +528,7 @@ function AvisoListado({
             {aviso.codigos.map((v, i) => (
               <div key={v.codigo}>
                 {i > 0 && <Divider variant="list" />}
-                <ProductoRondaRow producto={v} multiorden={multiorden} />
+                <ProductoRondaRow producto={v} multipedido={multipedido} />
               </div>
             ))}
           </div>
@@ -543,7 +553,7 @@ function AvisoListado({
           <TextoAviso>
             <ConNegritas texto="Este es un **pedido corporativo** que requiere surtido completo. Actualmente hay **productos sin surtir,** por lo que no puede finalizarse." />
           </TextoAviso>
-          {multiorden && (
+          {multipedido && (
             <DatosAviso
               filas={[
                 { etiqueta: 'Pedido', valor: p?.id },
@@ -565,17 +575,17 @@ function AvisoListado({
           titulo="Tarea incompleta"
           tipo="reloj"
           botones={[
-            { label: 'Cancelar', variante: 'error', onClick: () => onCancelarGuardado(aviso.idx, aviso.registrados) },
-            { label: 'Reintentar', onClick: () => onReintentar(aviso.idx, aviso.registrados) },
+            { label: 'Cancelar', variante: 'error', onClick: onCancelarGuardado },
+            { label: 'Reintentar', onClick: () => onReintentar(aviso.idx) },
           ]}
         >
           <TextoAviso>{TEXTO_ERROR_RED}</TextoAviso>
-          {multiorden && (
+          {/* Nombra el pedido que falló. No lista los ya registrados: al cancelar no se conserva ninguno. */}
+          {multipedido && (
             <DatosAviso
               filas={[
                 { etiqueta: 'Pedido sin registrar', valor: p?.id },
                 { etiqueta: 'Contenedor', valor: letra(aviso.idx) },
-                ...(aviso.registrados.length ? [{ etiqueta: 'Ya registrados', valor: aviso.registrados.join(', ') }] : []),
               ]}
             />
           )}
@@ -592,7 +602,7 @@ function AvisoListado({
       return (
         <AvisoModal titulo="Salir del surtido" botones={[cancelar, { label: 'Aceptar', onClick: onSalir }]}>
           <TextoAviso>Si sales ahora perderás los cambios hechos. ¿Deseas continuar?</TextoAviso>
-          {multiorden && (
+          {multipedido && (
             <TextoAviso>
               Se verán afectados los <b>{pedidos.length} pedidos</b> de la ronda.
             </TextoAviso>

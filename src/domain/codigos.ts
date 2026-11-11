@@ -10,7 +10,7 @@ export type Lectura =
   | { tipo: 'invalido'; valor: string };
 
 /**
- * SDD 2026-10-26-multiorden-surtido-listado · Validación de producto escaneado: el lector conserva solo dígitos, "-",
+ * SDD 2026-10-26-multipedido-surtido-listado · Validación de producto escaneado: el lector conserva solo dígitos, "-",
  * "F" y "C", con un máximo de 100 caracteres (igual que hoy).
  */
 export function limpiarLectura(valor: string): string {

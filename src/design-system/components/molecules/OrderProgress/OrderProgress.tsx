@@ -14,13 +14,13 @@ import pendiente from '@assets/icons/estado-pendiente.svg';
 import styles from './OrderProgress.module.css';
 
 type Props = {
-  /** Sin pedido (ronda multi-orden), el encabezado solo lleva el título, centrado (mockup 15:1437). */
+  /** Sin pedido (ronda multipedido V2), el encabezado solo lleva el título, centrado (mockup 15:1437). */
   pedido?: string;
   completado: number;
   negado: number;
   parcial: number;
   pendientes: number;
-  /** "Avance del pedido" en Figma; el surtido multi-orden lo rotula "Avance de la ronda" (FR-012). */
+  /** "Avance del pedido" en Figma; el surtido multipedido V2 lo rotula "Avance de la ronda" (FR-012). */
   titulo?: string;
   /** false: solo íconos y números, sin "Completado", "Negado"… (mockup 15:1437 de la ronda). */
   etiquetas?: boolean;

@@ -1,5 +1,5 @@
 /**
- * Un preset por cada escenario de `sdd/changes/2026-10-26-multiorden-armado-ronda` (elegibilidad-ronda-multiorden y
+ * Un preset por cada escenario de `sdd/changes/2026-10-26-multipedido-armado-ronda` (elegibilidad-ronda-multipedido y
  * catalogo-bandera-sucursal), con los datos que lo reproducen en el simulador del armado y lo que el spec
  * espera. `comprobar` es la parte verificable de ese resultado: la usan las pruebas y la pantalla, que marca
  * si el simulador coincide con el spec.
@@ -16,7 +16,7 @@ import {
   type ResultadoArmado,
 } from './armado';
 
-export type CapacidadArmado = 'elegibilidad-ronda-multiorden' | 'catalogo-bandera-sucursal';
+export type CapacidadArmado = 'elegibilidad-ronda-multipedido' | 'catalogo-bandera-sucursal';
 
 /** Lo que se puede comprobar automáticamente del resultado. Los folios van en orden. */
 export type Comprobacion = {
@@ -84,7 +84,7 @@ function ped(folio: number, vence: string, extra: Partial<PedidoCola> = {}): Ped
 
 const cfg = (cambios: Partial<ConfigSucursal> = {}): ConfigSucursal => ({ ...CONFIG_INICIAL, ...cambios });
 
-const E = 'elegibilidad-ronda-multiorden' as const;
+const E = 'elegibilidad-ronda-multipedido' as const;
 const C = 'catalogo-bandera-sucursal' as const;
 
 /* ------------------------------------------------------------------ *
@@ -98,10 +98,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Convivencia con las rondas actuales',
     escenario: 'Sucursal sin la bandera',
-    descripcion: 'Bandera_MultiordenEnHH inactiva. Cola 1001, 1002 y 1003, que cumplirían todos los criterios.',
-    esperado: 'La ronda se arma con el algoritmo actual y 1001 se surte como hoy: no se evalúan candidatos multi-orden.',
+    descripcion: 'Bandera_MultipedidoEnHH inactiva. Cola 1001, 1002 y 1003, que cumplirían todos los criterios.',
+    esperado: 'La ronda se arma con el algoritmo actual y 1001 se surte como hoy: no se evalúan candidatos multipedido V2.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30'), ped(1003, '12:00')],
-    config: cfg({ Bandera_MultiordenEnHH: false }),
+    config: cfg({ Bandera_MultipedidoEnHH: false }),
     comprobar: { modo: 'actual', ancla: 1001, ordenEvaluacion: [] },
   },
   {
@@ -109,18 +109,18 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Convivencia con las rondas actuales',
     escenario: 'Sucursal con la bandera',
-    descripcion: 'Bandera_MultiordenEnHH activa y BndRondaXPedido inactiva. Cola 1001, 1002 y 1003, todos con 0486600.',
-    esperado: 'Se aplican las reglas del multi-orden y no las de OrdenesporSurtir: la ronda queda con 1001, 1002 y 1003.',
+    descripcion: 'Bandera_MultipedidoEnHH activa y BndRondaXPedido inactiva. Cola 1001, 1002 y 1003, todos con 0486600.',
+    esperado: 'Se aplican las reglas del multipedido V2 y no las de OrdenesporSurtir: la ronda queda con 1001, 1002 y 1003.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30'), ped(1003, '12:00')],
     config: cfg(),
-    comprobar: { modo: 'multiorden', ronda: [1001, 1002, 1003], totalPartidas: 6 },
+    comprobar: { modo: 'multipedido', ronda: [1001, 1002, 1003], totalPartidas: 6 },
   },
   {
     id: 'ronda-por-pedido',
     capacidad: E,
     requisito: 'Convivencia con las rondas actuales',
     escenario: 'La ronda por pedido prevalece',
-    descripcion: 'Bandera_MultiordenEnHH y BndRondaXPedido activas. 1001 es el primero de la cola y 1002 cumple todos los criterios.',
+    descripcion: 'Bandera_MultipedidoEnHH y BndRondaXPedido activas. 1001 es el primero de la cola y 1002 cumple todos los criterios.',
     esperado: '1001 se surte en su propia ronda y 1002 en otra, cada uno solo.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30')],
     config: cfg({ BndRondaXPedido: true }),
@@ -344,7 +344,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Tipo de pedido',
     escenario: 'Traspaso en la ventana',
-    descripcion: 'Configuración inicial (Bandera_MultiordenTraspasos inactiva). 1002 es un traspaso; 1003 es pedido de cliente.',
+    descripcion: 'Configuración inicial (Bandera_MultipedidoTraspasos inactiva). 1002 es un traspaso; 1003 es pedido de cliente.',
     esperado: '1002 no se integra; la ronda queda con 1001 y 1003.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30', { tipo: 'traspaso' }), ped(1003, '12:00')],
     config: cfg(),
@@ -355,10 +355,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Tipo de pedido',
     escenario: 'Traspasos habilitados',
-    descripcion: 'Bandera_MultiordenTraspasos activa. 1002 es un traspaso que cumple las demás reglas.',
+    descripcion: 'Bandera_MultipedidoTraspasos activa. 1002 es un traspaso que cumple las demás reglas.',
     esperado: '1002 se integra.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30', { tipo: 'traspaso' })],
-    config: cfg({ Bandera_MultiordenTraspasos: true }),
+    config: cfg({ Bandera_MultipedidoTraspasos: true }),
     comprobar: { ronda: [1001, 1002] },
   },
 
@@ -368,10 +368,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Criterios de afinidad',
     escenario: 'Solo misma dirección, sin códigos en común',
-    descripcion: 'Solo Bandera_MultiordenMismaDireccion activa. 1003 va a la misma dirección que el ancla y no comparte códigos.',
+    descripcion: 'Solo Bandera_MultipedidoMismaDireccion activa. 1003 va a la misma dirección que el ancla y no comparte códigos.',
     esperado: '1003 cumple la afinidad y se integra.',
     cola: [ped(1001, '11:00'), ped(1003, '12:00', { codigos: cods(1003, 2) })],
-    config: cfg({ Bandera_MultiordenMismaDireccion: true, Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoMismaDireccion: true, Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001, 1003] },
   },
   {
@@ -379,10 +379,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Criterios de afinidad',
     escenario: 'Solo misma dirección, otra dirección',
-    descripcion: 'Solo Bandera_MultiordenMismaDireccion activa. 1003 va a otra dirección, aunque comparte 0486600.',
+    descripcion: 'Solo Bandera_MultipedidoMismaDireccion activa. 1003 va a otra dirección, aunque comparte 0486600.',
     esperado: '1003 no se integra.',
     cola: [ped(1001, '11:00'), ped(1003, '12:00', { direccion: DIR_2 })],
-    config: cfg({ Bandera_MultiordenMismaDireccion: true, Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoMismaDireccion: true, Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001], rechazados: [1003] },
   },
   {
@@ -393,7 +393,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     descripcion: 'Las dos banderas de afinidad activas. 1003 va a la misma dirección que el ancla, sin compartir códigos.',
     esperado: '1003 no se integra.',
     cola: [ped(1001, '11:00'), ped(1003, '12:00', { codigos: cods(1003, 2) })],
-    config: cfg({ Bandera_MultiordenMismaDireccion: true, Bandera_MultiordenValidarCodigos: true }),
+    config: cfg({ Bandera_MultipedidoMismaDireccion: true, Bandera_MultipedidoValidarCodigos: true }),
     comprobar: { ronda: [1001], rechazados: [1003] },
   },
   {
@@ -404,7 +404,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     descripcion: 'Las dos banderas de afinidad activas. 1003 va a la misma dirección que el ancla y comparte 0486600 con ella.',
     esperado: '1003 cumple la afinidad y se integra.',
     cola: [ped(1001, '11:00'), ped(1003, '12:00')],
-    config: cfg({ Bandera_MultiordenMismaDireccion: true, Bandera_MultiordenValidarCodigos: true }),
+    config: cfg({ Bandera_MultipedidoMismaDireccion: true, Bandera_MultipedidoValidarCodigos: true }),
     comprobar: { ronda: [1001, 1003] },
   },
   {
@@ -413,7 +413,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     requisito: 'Criterios de afinidad',
     escenario: 'Comparte código con un candidato ya integrado',
     descripcion:
-      'Solo Bandera_MultiordenValidarCodigos activa. 1002 comparte 1394010 con el ancla 1001 y se integra; 1003 no comparte con 1001, pero sí 2389475 con 1002.',
+      'Solo Bandera_MultipedidoValidarCodigos activa. 1002 comparte 1394010 con el ancla 1001 y se integra; 1003 no comparte con 1001, pero sí 2389475 con 1002.',
     esperado: '1003 cumple la afinidad: la ronda queda con 1001, 1002 y 1003.',
     cola: [
       ped(1001, '11:00', { codigos: ['0486600', '1394010'] }),
@@ -431,7 +431,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     descripcion: 'Las dos banderas de afinidad inactivas. 1003 va a otra dirección, no comparte códigos y cumple las demás reglas.',
     esperado: '1003 se integra sin evaluar dirección ni códigos.',
     cola: [ped(1001, '11:00'), ped(1003, '12:00', { direccion: DIR_2, codigos: cods(1003, 2) })],
-    config: cfg({ Bandera_MultiordenMismaDireccion: false, Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoMismaDireccion: false, Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001, 1003] },
   },
 
@@ -439,7 +439,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
   {
     id: 'candidato-retenido',
     capacidad: E,
-    requisito: 'Pedidos retenidos',
+    requisito: 'Pedidos retenidos o cancelados',
     escenario: 'Candidato retenido',
     descripcion: '1002 está retenido desde Exodus Sucursales y cumple las demás reglas; 1003 cumple todo.',
     esperado: '1002 no se integra a la ronda; la ronda queda con 1001 y 1003.',
@@ -450,10 +450,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
   {
     id: 'ancla-retenida',
     capacidad: E,
-    requisito: 'Pedidos retenidos',
+    requisito: 'Pedidos retenidos o cancelados',
     escenario: 'Ancla retenida',
     descripcion: '1001 está retenido y llega al frente de la cola; 1002 y 1003 cumplirían todo.',
-    esperado: 'No se arma ronda multi-orden con 1001 y 1001 se surte solo.',
+    esperado: 'No se arma ronda multipedido V2 con 1001 y 1001 se surte solo.',
     cola: [ped(1001, '11:00', { retenido: true }), ped(1002, '11:30'), ped(1003, '12:00')],
     config: cfg(),
     comprobar: { ancla: 1001, ronda: [1001], ordenEvaluacion: [] },
@@ -480,10 +480,10 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     requisito: 'Tope de partidas por ronda',
     escenario: 'El segundo cabe',
     descripcion:
-      'Tope 15. El ancla 1001 tiene 6 partidas y 1002 tiene 7, sin códigos en común (Bandera_MultiordenValidarCodigos inactiva para aislar el tope).',
+      'Tope 15. El ancla 1001 tiene 6 partidas y 1002 tiene 7, sin códigos en común (Bandera_MultipedidoValidarCodigos inactiva para aislar el tope).',
     esperado: '1002 se integra y la ronda suma 13.',
     cola: [ped(1001, '11:00', { codigos: cods(1001, 6) }), ped(1002, '11:30', { codigos: cods(1002, 7) })],
-    config: cfg({ Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001, 1002], totalPartidas: 13 },
   },
   {
@@ -492,14 +492,14 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     requisito: 'Tope de partidas por ronda',
     escenario: 'Justo en el tope',
     descripcion:
-      'Tope 15. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 2 partidas que no están en la ronda (Bandera_MultiordenValidarCodigos inactiva).',
+      'Tope 15. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 2 partidas que no están en la ronda (Bandera_MultipedidoValidarCodigos inactiva).',
     esperado: '1003 se integra y la ronda suma 15.',
     cola: [
       ped(1001, '11:00', { codigos: cods(1001, 6) }),
       ped(1002, '11:30', { codigos: cods(1002, 7) }),
       ped(1003, '12:00', { codigos: cods(1003, 2) }),
     ],
-    config: cfg({ Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001, 1002, 1003], totalPartidas: 15 },
   },
   {
@@ -508,14 +508,14 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     requisito: 'Tope de partidas por ronda',
     escenario: 'El tercero no cabe',
     descripcion:
-      'Tope 15. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 4 partidas que no están en la ronda (Bandera_MultiordenValidarCodigos inactiva).',
+      'Tope 15. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 4 partidas que no están en la ronda (Bandera_MultipedidoValidarCodigos inactiva).',
     esperado: '1003 no se integra; la ronda se queda en 13.',
     cola: [
       ped(1001, '11:00', { codigos: cods(1001, 6) }),
       ped(1002, '11:30', { codigos: cods(1002, 7) }),
       ped(1003, '12:00', { codigos: cods(1003, 4) }),
     ],
-    config: cfg({ Bandera_MultiordenValidarCodigos: false }),
+    config: cfg({ Bandera_MultipedidoValidarCodigos: false }),
     comprobar: { ronda: [1001, 1002], rechazados: [1003], totalPartidas: 13 },
   },
   {
@@ -534,14 +534,14 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     capacidad: E,
     requisito: 'Tope de partidas por ronda',
     escenario: 'Tope desactivado',
-    descripcion: 'Bandera_MultiordenTopePartidas inactiva. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 9 partidas; todos comparten 0486600.',
+    descripcion: 'Bandera_MultipedidoTopePartidas inactiva. La ronda suma 13 (1001 con 6 y 1002 con 7) y 1003 tiene 9 partidas; todos comparten 0486600.',
     esperado: '1003 se integra y la ronda suma 22.',
     cola: [
       ped(1001, '11:00', { codigos: cods(1001, 6, [COMUN]) }),
       ped(1002, '11:30', { codigos: cods(1002, 7, [COMUN]) }),
       ped(1003, '12:00', { codigos: cods(1003, 9, [COMUN]) }),
     ],
-    config: cfg({ Bandera_MultiordenTopePartidas: false }),
+    config: cfg({ Bandera_MultipedidoTopePartidas: false }),
     comprobar: { ronda: [1001, 1002, 1003], totalPartidas: 22 },
   },
 
@@ -591,11 +591,11 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     comprobar: { ronda: [1001], rechazados: [1002], totalMinutos: 8, minutosFranjaRonda: 20 },
   },
 
-  /* ---- Surtido unificado con revisión excluye multi-orden ---- */
+  /* ---- Surtido unificado con revisión excluye multipedido V2 ---- */
   {
     id: 'surtido-unificado',
     capacidad: E,
-    requisito: 'Surtido unificado con revisión excluye multi-orden',
+    requisito: 'Orden de evaluación con otras banderas',
     escenario: 'Sucursal con surtido unificado',
     descripcion: 'Bandera_RevisionPedidoEnHH activa. 1002 y 1003 cumplirían todos los criterios.',
     esperado: '1001 se surte solo aunque existan candidatos que cumplan.',
@@ -619,25 +619,25 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     enListado: true,
   },
 
-  /* ---- Catálogo · Banderas del multi-orden ---- */
+  /* ---- Catálogo · Banderas del multipedido V2 ---- */
   {
-    id: 'cat-sin-multiorden',
+    id: 'cat-sin-multipedido-v2',
     capacidad: C,
-    requisito: 'Banderas del multi-orden',
-    escenario: 'Sucursal sin multi-orden',
-    descripcion: 'Bandera_MultiordenEnHH inactiva. Se envía 1001 a surtir.',
+    requisito: 'Banderas del multipedido V2',
+    escenario: 'Sucursal sin multipedido V2',
+    descripcion: 'Bandera_MultipedidoEnHH inactiva. Se envía 1001 a surtir.',
     esperado: '1001 se surte como hoy.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30')],
-    config: cfg({ Bandera_MultiordenEnHH: false }),
+    config: cfg({ Bandera_MultipedidoEnHH: false }),
     comprobar: { modo: 'actual', ronda: [1001] },
   },
   {
     id: 'cat-config-inicial',
     capacidad: C,
-    requisito: 'Banderas del multi-orden',
+    requisito: 'Banderas del multipedido V2',
     escenario: 'Configuración inicial al liberar a productivo',
     descripcion:
-      'Bandera_MultiordenEnHH activa y las demás en su valor inicial. 1002 va a otra dirección que el ancla, comparte 0486600 y deja la ronda en 12 partidas (6 + 6).',
+      'Bandera_MultipedidoEnHH activa y las demás en su valor inicial. 1002 va a otra dirección que el ancla, comparte 0486600 y deja la ronda en 12 partidas (6 + 6).',
     esperado: '1002 se integra: la misma dirección no se exige y se cumplen el código compartido y el tope de 15.',
     cola: [
       ped(1001, '11:00', { codigos: cods(1001, 6, [COMUN]) }),
@@ -649,9 +649,9 @@ export const PRESETS_ARMADO: PresetArmado[] = [
   {
     id: 'cat-por-pedido',
     capacidad: C,
-    requisito: 'Banderas del multi-orden',
-    escenario: 'Multi-orden con ronda por pedido',
-    descripcion: 'Bandera_MultiordenEnHH y BndRondaXPedido activas. Se envía 1001 a surtir.',
+    requisito: 'Banderas del multipedido V2',
+    escenario: 'Multipedido V2 con ronda por pedido',
+    descripcion: 'Bandera_MultipedidoEnHH y BndRondaXPedido activas. Se envía 1001 a surtir.',
     esperado: '1001 se surte en su propia ronda, sin candidatos.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30')],
     config: cfg({ BndRondaXPedido: true }),
@@ -660,22 +660,22 @@ export const PRESETS_ARMADO: PresetArmado[] = [
   {
     id: 'cat-traspasos-inicial',
     capacidad: C,
-    requisito: 'Banderas del multi-orden',
+    requisito: 'Banderas del multipedido V2',
     escenario: 'Traspasos con la configuración inicial',
-    descripcion: 'Bandera_MultiordenEnHH activa y Bandera_MultiordenTraspasos inactiva. El candidato 1002 es un traspaso.',
+    descripcion: 'Bandera_MultipedidoEnHH activa y Bandera_MultipedidoTraspasos inactiva. El candidato 1002 es un traspaso.',
     esperado: '1002 no se integra a la ronda.',
     cola: [ped(1001, '11:00'), ped(1002, '11:30', { tipo: 'traspaso' })],
     config: cfg(),
     comprobar: { ronda: [1001], rechazados: [1002] },
   },
 
-  /* ---- Catálogo · Parámetros numéricos del multi-orden ---- */
+  /* ---- Catálogo · Parámetros numéricos del multipedido V2 ---- */
   {
     id: 'cat-valores-iniciales',
     capacidad: C,
-    requisito: 'Parámetros numéricos del multi-orden',
+    requisito: 'Parámetros numéricos del multipedido V2',
     escenario: 'Valores iniciales',
-    descripcion: 'Bandera_MultiordenEnHH activa y sin parámetros configurados. Cola 1001 a 1004.',
+    descripcion: 'Bandera_MultipedidoEnHH activa y sin parámetros configurados. Cola 1001 a 1004.',
     esperado: 'Se usan 3 pedidos como máximo y 15 partidas como tope: la ronda queda con 1001, 1002 y 1003, y 1004 queda fuera.',
     cola: [ped(1001, '11:00'), ped(1002, '11:15'), ped(1003, '11:30'), ped(1004, '11:45')],
     config: cfg(),
@@ -684,9 +684,9 @@ export const PRESETS_ARMADO: PresetArmado[] = [
   {
     id: 'cat-valor-configurado',
     capacidad: C,
-    requisito: 'Parámetros numéricos del multi-orden',
+    requisito: 'Parámetros numéricos del multipedido V2',
     escenario: 'Valor configurado',
-    descripcion: 'Parametro_MultiordenMaxPartidas en 20. El ancla 1001 tiene 10 partidas y 1002, con 8, deja la ronda en 18.',
+    descripcion: 'Parametro_MultipedidoMaxPartidas en 20. El ancla 1001 tiene 10 partidas y 1002, con 8, deja la ronda en 18.',
     esperado: '1002 se integra (con el valor inicial de 15 no habría cabido).',
     cola: [
       ped(1001, '11:00', { codigos: cods(1001, 10, [COMUN]) }),

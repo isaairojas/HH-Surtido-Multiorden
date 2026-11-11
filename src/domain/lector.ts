@@ -1,9 +1,9 @@
 /**
  * Qué hace la HH con una lectura del lector del listado (el detalle no tiene lector, como el V2: clarify 28).
- * SDD 2026-10-26-multiorden-surtido-listado · Validación de producto escaneado.
+ * SDD 2026-10-26-multipedido-surtido-listado · Validación de producto escaneado.
  *
  * La etiqueta única (QR) y la caducidad más próxima no están en la demo (decisión del 2026-11-09): en la ronda
- * funcionan como en la canónica. Ver SDD 2026-10-26-multiorden-surtido-listado · Validación de etiqueta única (EU).
+ * funcionan como en la canónica. Ver SDD 2026-10-26-multipedido-surtido-listado · Validación de etiqueta única (EU).
  *
  * Pura: decide, no despacha. La pantalla aplica el resultado (avisa, abre la captura o surte).
  */

@@ -1,8 +1,8 @@
 /**
- * Simulador del armado de la ronda multi-orden (SDD 2026-10-26-multiorden-armado-ronda).
+ * Simulador del armado de la ronda multipedido V2 (SDD 2026-10-26-multipedido-armado-ronda).
  *
  * En la operación real esto lo resuelve el back-end (el servicio que asigna `GrupoID`): la HH recibe la ronda
- * ya armada. Aquí se reproduce con las reglas de las specs `elegibilidad-ronda-multiorden` y
+ * ya armada. Aquí se reproduce con las reglas de las specs `elegibilidad-ronda-multipedido` y
  * `catalogo-bandera-sucursal` para que QA las valide en pantalla, escenario por escenario. Es lógica pura:
  * no toca el store ni la ronda del surtido.
  *
@@ -12,7 +12,7 @@
  * - Criterios acumulativos: el candidato cumple todos los activos (misma dirección, código compartido, tope).
  * - Un código cuenta una partida en cada pedido donde está (en dos pedidos suma dos).
  * - El tope solo filtra candidatos: el ancla no se descarta, pero entonces ningún candidato cabe.
- * - `BndRondaXPedido` prevalece sobre el multi-orden.
+ * - `BndRondaXPedido` prevalece sobre el multipedido V2.
  */
 
 export type Servicio = 'local' | 'foraneo';
@@ -42,20 +42,20 @@ export type PedidoCola = {
 
 /** Banderas de la sucursal que intervienen en el armado. */
 export type BanderasArmado = {
-  Bandera_MultiordenEnHH: boolean;
+  Bandera_MultipedidoEnHH: boolean;
   BndRondaXPedido: boolean;
   Bandera_RevisionPedidoEnHH: boolean;
-  Bandera_MultiordenMismaDireccion: boolean;
-  Bandera_MultiordenValidarCodigos: boolean;
-  Bandera_MultiordenTopePartidas: boolean;
-  Bandera_MultiordenTraspasos: boolean;
+  Bandera_MultipedidoMismaDireccion: boolean;
+  Bandera_MultipedidoValidarCodigos: boolean;
+  Bandera_MultipedidoTopePartidas: boolean;
+  Bandera_MultipedidoTraspasos: boolean;
   BndUnificarRondasMontos: boolean;
 };
 
 export type ConfigSucursal = BanderasArmado & {
   /** Máximo de pedidos por ronda. Sin configurar: 3. */
   maxPedidos?: number;
-  /** Tope acumulado de partidas por ronda (`Parametro_MultiordenMaxPartidas`). Sin configurar: 15. */
+  /** Tope acumulado de partidas por ronda (`Parametro_MultipedidoMaxPartidas`). Sin configurar: 15. */
   maxPartidas?: number;
   /**
    * Tiempo máximo de la franja horaria, en minutos (hoy en `TiempoEstablecidoSurtido`). Ya no deja fuera a
@@ -65,13 +65,13 @@ export type ConfigSucursal = BanderasArmado & {
 };
 
 export const NOMBRES_BANDERAS: (keyof BanderasArmado)[] = [
-  'Bandera_MultiordenEnHH',
+  'Bandera_MultipedidoEnHH',
   'BndRondaXPedido',
   'Bandera_RevisionPedidoEnHH',
-  'Bandera_MultiordenMismaDireccion',
-  'Bandera_MultiordenValidarCodigos',
-  'Bandera_MultiordenTopePartidas',
-  'Bandera_MultiordenTraspasos',
+  'Bandera_MultipedidoMismaDireccion',
+  'Bandera_MultipedidoValidarCodigos',
+  'Bandera_MultipedidoTopePartidas',
+  'Bandera_MultipedidoTraspasos',
   'BndUnificarRondasMontos',
 ];
 
@@ -79,26 +79,26 @@ export const MAX_PEDIDOS_INICIAL = 3;
 export const MAX_PARTIDAS_INICIAL = 15;
 
 /**
- * Configuración de ejemplo de la demo. Sigue la nota del catálogo para la liberación a productivo (multi-orden
+ * Configuración de ejemplo de la demo. Sigue la nota del catálogo para la liberación a productivo (multipedido V2
  * activo, misma dirección inactiva, código compartido y tope activos, traspasos inactivos); las banderas que ya
  * existen hoy (`BndRondaXPedido`, `Bandera_RevisionPedidoEnHH`, `BndUnificarRondasMontos`) van inactivas y
  * cada escenario las enciende cuando las necesita. La franja de 30 min es un ejemplo: la demo no define valores
  * reales (revisión del 2026-11-09), solo muestra cómo están configurados.
  */
 export const CONFIG_INICIAL: ConfigSucursal = {
-  Bandera_MultiordenEnHH: true,
+  Bandera_MultipedidoEnHH: true,
   BndRondaXPedido: false,
   Bandera_RevisionPedidoEnHH: false,
-  Bandera_MultiordenMismaDireccion: false,
-  Bandera_MultiordenValidarCodigos: true,
-  Bandera_MultiordenTopePartidas: true,
-  Bandera_MultiordenTraspasos: false,
+  Bandera_MultipedidoMismaDireccion: false,
+  Bandera_MultipedidoValidarCodigos: true,
+  Bandera_MultipedidoTopePartidas: true,
+  Bandera_MultipedidoTraspasos: false,
   BndUnificarRondasMontos: false,
   minutosFranja: 30,
 };
 
 /** Cómo se arma la ronda según las banderas de la sucursal. */
-export type ModoArmado = 'actual' | 'por-pedido' | 'unificado' | 'multiorden';
+export type ModoArmado = 'actual' | 'por-pedido' | 'unificado' | 'multipedido';
 
 export type ResultadoRegla = 'cumple' | 'no-cumple' | 'no-aplica';
 export type ReglaEvaluada = { regla: string; resultado: ResultadoRegla; detalle: string };
@@ -179,14 +179,14 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     notas,
   });
 
-  if (!ancla) return base('multiorden', 'La cola está vacía: no hay ronda que armar.');
+  if (!ancla) return base('multipedido', 'La cola está vacía: no hay ronda que armar.');
 
   // Convivencia con las rondas actuales.
-  if (!config.Bandera_MultiordenEnHH) {
-    notas.push('El simulador no reproduce el algoritmo actual (OrdenesporSurtir): solo muestra que el multi-orden no interviene.');
+  if (!config.Bandera_MultipedidoEnHH) {
+    notas.push('El simulador no reproduce el algoritmo actual (OrdenesporSurtir): solo muestra que el multipedido V2 no interviene.');
     return base(
       'actual',
-      'Bandera_MultiordenEnHH inactiva: la ronda se arma con el algoritmo actual y se surte como hoy. No se evalúan candidatos multi-orden.',
+      'Bandera_MultipedidoEnHH inactiva: la ronda se arma con el algoritmo actual y se surte como hoy. No se evalúan candidatos multipedido V2.',
     );
   }
   if (config.BndRondaXPedido) {
@@ -205,12 +205,12 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     );
   }
 
-  const multiorden = 'Bandera_MultiordenEnHH activa: la ronda se arma con las reglas del multi-orden.';
+  const multipedido = 'Bandera_MultipedidoEnHH activa: la ronda se arma con las reglas del multipedido V2.';
 
-  // Pedidos retenidos: el ancla retenida no arma ronda multi-orden.
+  // Pedidos retenidos: el ancla retenida no arma ronda multipedido V2.
   if (ancla.retenido) {
-    notas.push(`${ancla.folio} está retenido desde Exodus Sucursales: no se arma ronda multi-orden con él y se surte solo.`);
-    return { ...base('multiorden', multiorden), fueraDeVentana: ordenada.slice(1) };
+    notas.push(`${ancla.folio} está retenido desde Exodus Sucursales: no se arma ronda multipedido V2 con él y se surte solo.`);
+    return { ...base('multipedido', multipedido), fueraDeVentana: ordenada.slice(1) };
   }
 
   const ronda: PedidoCola[] = [ancla];
@@ -236,7 +236,7 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
   const ventana = restantes.slice(0, lugares);
   const fueraDeVentana = restantes.slice(lugares);
 
-  if (sumaPartidas([ancla]) > maxPartidas && config.Bandera_MultiordenTopePartidas) {
+  if (sumaPartidas([ancla]) > maxPartidas && config.Bandera_MultipedidoTopePartidas) {
     notas.push(
       `El ancla tiene ${ancla.codigos.length} partidas, más que el tope de ${maxPartidas}: se surte, pero ningún candidato cabe.`,
     );
@@ -270,8 +270,8 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
   }
 
   return {
-    modo: 'multiorden',
-    explicacionModo: multiorden,
+    modo: 'multipedido',
+    explicacionModo: multipedido,
     cola: ordenada,
     ancla,
     evaluados,
@@ -301,7 +301,7 @@ function evaluarCandidato(
 
   reglas.push(
     c.retenido
-      ? { regla: 'Retención', resultado: 'no-cumple', detalle: 'retenido manualmente desde Exodus Sucursales; no se evalúa para multi-orden.' }
+      ? { regla: 'Retención', resultado: 'no-cumple', detalle: 'retenido manualmente desde Exodus Sucursales; no se evalúa para multipedido V2.' }
       : { regla: 'Retención', resultado: 'cumple', detalle: 'no está retenido.' },
   );
 
@@ -317,13 +317,13 @@ function evaluarCandidato(
 
   if (c.tipo === 'cliente') {
     reglas.push({ regla: 'Tipo de pedido', resultado: 'cumple', detalle: 'pedido de cliente.' });
-  } else if (config.Bandera_MultiordenTraspasos) {
-    reglas.push({ regla: 'Tipo de pedido', resultado: 'cumple', detalle: `${etiquetaTipo(c.tipo)} permitido por Bandera_MultiordenTraspasos.` });
+  } else if (config.Bandera_MultipedidoTraspasos) {
+    reglas.push({ regla: 'Tipo de pedido', resultado: 'cumple', detalle: `${etiquetaTipo(c.tipo)} permitido por Bandera_MultipedidoTraspasos.` });
   } else {
     reglas.push({
       regla: 'Tipo de pedido',
       resultado: 'no-cumple',
-      detalle: `es ${etiquetaTipo(c.tipo)} y Bandera_MultiordenTraspasos está inactiva.`,
+      detalle: `es ${etiquetaTipo(c.tipo)} y Bandera_MultipedidoTraspasos está inactiva.`,
     });
   }
 
@@ -335,17 +335,17 @@ function evaluarCandidato(
     });
   }
 
-  if (config.Bandera_MultiordenMismaDireccion) {
+  if (config.Bandera_MultipedidoMismaDireccion) {
     reglas.push(
       c.direccion === ancla.direccion
         ? { regla: 'Misma dirección', resultado: 'cumple', detalle: 'va a la misma dirección que el ancla.' }
         : { regla: 'Misma dirección', resultado: 'no-cumple', detalle: `va a "${c.direccion}" y el ancla a "${ancla.direccion}".` },
     );
   } else {
-    reglas.push({ regla: 'Misma dirección', resultado: 'no-aplica', detalle: 'no se exige (Bandera_MultiordenMismaDireccion inactiva).' });
+    reglas.push({ regla: 'Misma dirección', resultado: 'no-aplica', detalle: 'no se exige (Bandera_MultipedidoMismaDireccion inactiva).' });
   }
 
-  if (config.Bandera_MultiordenValidarCodigos) {
+  if (config.Bandera_MultipedidoValidarCodigos) {
     const compartidos = ronda
       .map((p) => ({ folio: p.folio, codigos: c.codigos.filter((x) => p.codigos.includes(x)) }))
       .filter((x) => x.codigos.length > 0);
@@ -359,12 +359,12 @@ function evaluarCandidato(
         : { regla: 'Código compartido', resultado: 'no-cumple', detalle: 'no comparte ningún código con los pedidos ya integrados.' },
     );
   } else {
-    reglas.push({ regla: 'Código compartido', resultado: 'no-aplica', detalle: 'no se exige (Bandera_MultiordenValidarCodigos inactiva).' });
+    reglas.push({ regla: 'Código compartido', resultado: 'no-aplica', detalle: 'no se exige (Bandera_MultipedidoValidarCodigos inactiva).' });
   }
 
   const partidas = sumaPartidas(ronda);
   const conCandidato = partidas + c.codigos.length;
-  if (config.Bandera_MultiordenTopePartidas) {
+  if (config.Bandera_MultipedidoTopePartidas) {
     reglas.push(
       conCandidato <= maxPartidas
         ? { regla: 'Tope de partidas', resultado: 'cumple', detalle: `${partidas} + ${c.codigos.length} = ${conCandidato} de ${maxPartidas}.` }
@@ -378,7 +378,7 @@ function evaluarCandidato(
     reglas.push({
       regla: 'Tope de partidas',
       resultado: 'no-aplica',
-      detalle: `sin límite (Bandera_MultiordenTopePartidas inactiva); la ronda sumaría ${conCandidato}.`,
+      detalle: `sin límite (Bandera_MultipedidoTopePartidas inactiva); la ronda sumaría ${conCandidato}.`,
     });
   }
 

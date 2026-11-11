@@ -18,7 +18,7 @@ type Props = {
   /** Distancia desde el borde inferior del marco (932 − 60 − 794 = 78 px; Detalle: 0). */
   bottom?: number;
   /**
-   * Deja el título fijo y hace scrollable el contenido. El surtido multi-orden lo
+   * Deja el título fijo y hace scrollable el contenido. El surtido multipedido V2 lo
    * necesita porque la lista agregada y el desglose por pedido crecen con la ronda,
    * mientras que los frames de Figma caben siempre en una pantalla.
    */

@@ -1,6 +1,6 @@
 /**
  * Modales de promoción incompleta al finalizar la ronda.
- * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
+ * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda.
  *
  * Réplica del flujo del V2 real (`AssortmentTaskV2`, textos de `i18n/es.ts`), que en Figma vive en
  * "Surtido - Un pedido x ronda" › finalización de surtido manual:
@@ -14,7 +14,7 @@
  * Un código que no es de la promoción avisa "Código inválido" y regresa al paso 1. Mismas ventanas que el
  * flujo compartido por el usuario el 2026-11-09 (botones solo con ✕ / ✓).
  *
- * Propio del multi-orden: la lista va agrupada por pedido, porque la misma promoción puede
+ * Propio del multipedido V2: la lista va agrupada por pedido, porque la misma promoción puede
  * quedar incompleta en varios pedidos y la mercancía se retira del contenedor de cada uno.
  */
 import iconoNegado from '@assets/icons/modal-icono-negado.svg';
@@ -34,7 +34,7 @@ type ListaProps = {
 };
 
 /**
- * "Códigos de la promoción" (PromotionProductList del V2): código y chip de avance. En una ronda multi-orden
+ * "Códigos de la promoción" (PromotionProductList del V2): código y chip de avance. En una ronda multipedido V2
  * va agrupada por pedido, con la letra de su contenedor; con un solo pedido, la lista de hoy.
  */
 function ListaPromocion({ pendiente, totalPedidos }: ListaProps) {

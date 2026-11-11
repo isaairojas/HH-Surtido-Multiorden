@@ -1,14 +1,14 @@
 /**
- * Toma de tarea para el surtido multi-orden.
+ * Toma de tarea para el surtido multipedido V2.
  * Muestra la ronda asignada con sus N pedidos en el orden del algoritmo, uno por contenedor
  * (bloque "Pedidos" de la propuesta A). "Mismo cliente" se marca en el Detalle de la ronda.
  *
- * SDD 2026-10-26-multiorden-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
+ * SDD 2026-10-26-multipedido-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
  * (próximos a vencer) lo da el procesador de ordenamiento; la HH no reordena.
  *
- * SDD 2026-10-26-multiorden-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
- * bandera de multi-orden: "Aceptar" enruta según las banderas de la sucursal (simuladas en la demo):
- * listado de un pedido, Detalle de la ronda multi-orden, surtido anterior o inicio de sesión.
+ * SDD 2026-10-26-multipedido-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
+ * bandera de multipedido V2: "Aceptar" enruta según las banderas de la sucursal (simuladas en la demo):
+ * listado de un pedido, Detalle de la ronda multipedido V2, surtido anterior o inicio de sesión.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -36,8 +36,8 @@ export function AsignacionTareas() {
   const pedidos = ronda.ronda.pedidos;
   const total = pedidos.length;
   const [sinProductos, setSinProductos] = useState(false);
-  // Solo una ronda multi-orden identifica cada pedido con la letra de su contenedor.
-  const multiorden = total > 1 && simulacion.multiordenEnHH;
+  // Solo una ronda multipedido V2 identifica cada pedido con la letra de su contenedor.
+  const multipedido = total > 1 && simulacion.multipedidoEnHH;
 
   const irAnterior = () => {
     navigate('/surtido-anterior');
@@ -51,7 +51,7 @@ export function AsignacionTareas() {
     if (!simulacion.banderaListado) return irAnterior();
     setEtapa('surtido');
     if (total === 1) return navigate('/surtido');
-    const falla = simulacion.fallaBanderaMultiorden;
+    const falla = simulacion.fallaBanderaMultipedido;
     if (falla === 'sesion') {
       return navigate('/login');
     }
@@ -62,7 +62,7 @@ export function AsignacionTareas() {
     if (falla === 'tiempo') {
       return irAnterior();
     }
-    if (!simulacion.multiordenEnHH) return irAnterior();
+    if (!simulacion.multipedidoEnHH) return irAnterior();
     navigate('/ronda');
   };
 
@@ -109,7 +109,7 @@ export function AsignacionTareas() {
           title={TAREA.documentoLabel}
           icon={receiptIcon}
           iconSize={{ w: 13.482, h: 17.159 }}
-          rows={pedidos.map((p, idx) => ({ label: multiorden ? `Contenedor ${letraDe(ronda.ronda, idx)}` : 'Pedido', value: p.id }))}
+          rows={pedidos.map((p, idx) => ({ label: multipedido ? `Contenedor ${letraDe(ronda.ronda, idx)}` : 'Pedido', value: p.id }))}
         />
       </ContentPanel>
       <BottomBar>

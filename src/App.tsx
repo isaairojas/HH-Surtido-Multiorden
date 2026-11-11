@@ -1,5 +1,5 @@
 /**
- * Rutas del surtido multi-orden.
+ * Rutas del surtido multipedido V2.
  * Los modales no son rutas: viven como estado de la pantalla que los abre.
  *
  * Además de las pantallas de la HH, la demo tiene:
@@ -11,7 +11,6 @@ import { AsignacionTareas } from './screens/tareas/AsignacionTareas';
 import { DetalleRonda } from './screens/surtido/DetalleRonda';
 import { SurtidoRonda } from './screens/surtido/SurtidoRonda';
 import { DetalleProducto } from './screens/surtido/DetalleProducto';
-import { RondaTerminada } from './screens/surtido/RondaTerminada';
 import { InicioSesion, SurtidoAnterior } from './screens/referencia/PantallaReferencia';
 import { ArmadoRonda } from './screens/armado/ArmadoRonda';
 import { ToastHost } from './navigation/ToastHost';
@@ -44,7 +43,6 @@ export function App() {
           <Route path="/ronda" element={<DetalleRonda />} />
           <Route path="/surtido" element={<SurtidoRonda />} />
           <Route path="/detalle/:codigo" element={<DetalleProducto />} />
-          <Route path="/ronda-terminada" element={<RondaTerminada />} />
           <Route path="/surtido-anterior" element={<SurtidoAnterior />} />
           <Route path="/login" element={<InicioSesion />} />
           <Route path="*" element={<Navigate to="/tareas" replace />} />

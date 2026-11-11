@@ -1,8 +1,8 @@
 /**
  * Pantallas de referencia de la demo: marcan a dónde enruta la HH cuando un escenario sale del surtido
- * multi-orden (surtido anterior, inicio de sesión). No replican esas pantallas: solo dicen cuál se abriría.
- * SDD 2026-10-26-multiorden-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
- * bandera de multi-orden.
+ * multipedido V2 (surtido anterior, inicio de sesión). No replican esas pantallas: solo dicen cuál se abriría.
+ * SDD 2026-10-26-multipedido-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
+ * bandera de multipedido V2.
  */
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +36,7 @@ function PantallaReferencia({ titulo, etiqueta, children }: { titulo: string; et
   );
 }
 
-/** La tarea no es multi-orden (o la bandera no se pudo consultar): abre el surtido de hoy, sin cambios. */
+/** La tarea no es multipedido V2 (o la bandera no se pudo consultar): abre el surtido de hoy, sin cambios. */
 export function SurtidoAnterior() {
   const { ronda } = useStore();
   return (

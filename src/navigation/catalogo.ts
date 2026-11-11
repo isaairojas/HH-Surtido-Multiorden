@@ -1,7 +1,7 @@
 /**
  * Catálogo de escenarios de la demo para QA: cada escenario de los specs de surtido de `sdd/changes/`, con
  * la semilla que lo prepara, los pasos en la demo y el resultado esperado. La revisión, la facturación y el
- * embarque del multi-orden se trabajarán después de liberar los cambios de Víctor Limón (2026-11-10).
+ * embarque del multipedido V2 se trabajarán después de liberar los cambios de Víctor Limón (2026-11-10).
  *
  * Los specs usan datos de ejemplo (0486600, 1001…); aquí los pasos usan los datos de la demo:
  * - 100001 (A) y 100002 (B), cliente AUTOPARTES DEL VALLE; 100003 (C), REFACCIONARIA LA ÚNICA. Ronda R-20261021-01.
@@ -20,10 +20,10 @@ import { PRESETS_ARMADO } from '../domain/armadoEscenarios';
 export type CambioId = 'armado' | 'listado' | 'cierre' | 'imagen-familia';
 
 export const CAMBIOS: { id: CambioId; titulo: string; carpeta: string }[] = [
-  { id: 'listado', titulo: 'Surtido multi-orden en el listado', carpeta: '2026-10-26-multiorden-surtido-listado' },
-  { id: 'cierre', titulo: 'Cierre y salida del listado', carpeta: '2026-11-05-multiorden-surtido-listado-cierre' },
+  { id: 'listado', titulo: 'Surtido multipedido V2 en el listado', carpeta: '2026-10-26-multipedido-surtido-listado' },
+  { id: 'cierre', titulo: 'Cierre y salida del listado', carpeta: '2026-11-05-multipedido-surtido-listado-cierre' },
   { id: 'imagen-familia', titulo: 'Imagen y agrupación por familia', carpeta: '2026-10-26-surtido-listado-imagen-familia' },
-  { id: 'armado', titulo: 'Armado de la ronda (servidor)', carpeta: '2026-10-26-multiorden-armado-ronda' },
+  { id: 'armado', titulo: 'Armado de la ronda (servidor)', carpeta: '2026-10-26-multipedido-armado-ronda' },
 ];
 
 export type Codigo = { etiqueta: string; valor: string };
@@ -49,29 +49,29 @@ export type Caso = {
 const c = (valor: string, texto?: string): Codigo => ({ etiqueta: texto ?? valor, valor });
 const e18 = (codigo: string, n: number): Codigo => ({ etiqueta: `${n} ${n === 1 ? 'pieza' : 'piezas'} de ${codigo}`, valor: etiqueta(codigo, n) });
 
-const LISTADO = '2026-10-26-multiorden-surtido-listado';
+const LISTADO = '2026-10-26-multipedido-surtido-listado';
 const TAREA = 'Toca ✓ (Aceptar).';
 const ESCANEA = (codigo: string, n: number) =>
   `Pega ${codigo} en el lector (o tócalo en ⌨ y tecléalo), captura ${n} y acepta.`;
 
 /** Escenarios del listado, la tarea asignada, el cierre y la imagen/familia. */
 const CASOS_HH: Caso[] = [
-  /* ================= 2026-10-26-multiorden-surtido-listado · asignacion-tarea ================= */
+  /* ================= 2026-10-26-multipedido-surtido-listado · asignacion-tarea ================= */
   {
-    id: 'multipedido-no-multiorden',
+    id: 'multipedido-no-v2',
     cambio: 'listado',
     requisito: 'Inicio de surtido y elección de versión',
-    escenario: 'Ronda multipedido que no es multi-orden',
-    semilla: 'sin-multiorden',
+    escenario: 'Ronda multipedido que no es V2',
+    semilla: 'sin-multipedido-v2',
     ruta: '/tareas',
-    pasos: ['La tarea tiene 100001 y 100002 y la sucursal no tiene Bandera_MultiordenEnHH.', TAREA],
+    pasos: ['La tarea tiene 100001 y 100002 y la sucursal no tiene Bandera_MultipedidoEnHH.', TAREA],
     esperado: 'Se abre el surtido anterior (pantalla de referencia), no el listado. La toma de tarea lista los pedidos sin letra de contenedor.',
   },
   {
-    id: 'ronda-multiorden',
+    id: 'ronda-multipedido-v2',
     cambio: 'listado',
     requisito: 'Inicio de surtido y elección de versión',
-    escenario: 'Ronda multi-orden',
+    escenario: 'Ronda multipedido V2',
     semilla: 'tareas',
     ruta: '/tareas',
     pasos: [TAREA, 'En el Detalle de la ronda toca "Iniciar surtido".'],
@@ -92,7 +92,6 @@ const CASOS_HH: Caso[] = [
     cambio: 'listado',
     requisito: 'Inicio de surtido y elección de versión',
     escenario: 'Tarea sin productos',
-    extra: true,
     semilla: 'tarea-sin-productos',
     ruta: '/tareas',
     pasos: [TAREA],
@@ -101,7 +100,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'falla-conexion-bandera',
     cambio: 'listado',
-    requisito: 'Falla de la consulta de la bandera de multi-orden',
+    requisito: 'Falla de la consulta de la bandera de multipedido V2',
     escenario: 'Falla de conexión al consultar la bandera',
     semilla: 'falla-bandera-conexion',
     ruta: '/tareas',
@@ -111,9 +110,8 @@ const CASOS_HH: Caso[] = [
   {
     id: 'falla-tiempo-bandera',
     cambio: 'listado',
-    requisito: 'Falla de la consulta de la bandera de multi-orden',
+    requisito: 'Falla de la consulta de la bandera de multipedido V2',
     escenario: 'La consulta no responde a tiempo',
-    extra: true,
     semilla: 'falla-bandera-tiempo',
     ruta: '/tareas',
     pasos: [TAREA],
@@ -122,7 +120,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'sesion-vencida',
     cambio: 'listado',
-    requisito: 'Falla de la consulta de la bandera de multi-orden',
+    requisito: 'Falla de la consulta de la bandera de multipedido V2',
     escenario: 'Sesión vencida al consultar la bandera',
     semilla: 'sesion-vencida',
     ruta: '/tareas',
@@ -156,7 +154,7 @@ const CASOS_HH: Caso[] = [
     escenario: 'Indicador de mismo cliente desactivado',
     semilla: 'mismo-cliente-off',
     ruta: '/tareas',
-    pasos: ['Bandera_MultiordenMismoCliente está inactiva.', TAREA],
+    pasos: ['Bandera_MultipedidoMismoCliente está inactiva.', TAREA],
     esperado: 'Ningún panel del Detalle de la ronda lleva "Mismo cliente".',
   },
   {
@@ -170,12 +168,12 @@ const CASOS_HH: Caso[] = [
     esperado: 'Se abre el listado de productos de la ronda.',
   },
 
-  /* ================= 2026-10-26-multiorden-surtido-listado · surtido-listado ================= */
+  /* ================= 2026-10-26-multipedido-surtido-listado · surtido-listado ================= */
   {
-    id: 'apertura-multiorden',
+    id: 'apertura-multipedido-v2',
     cambio: 'listado',
     requisito: 'Vinculación del pedido al abrir',
-    escenario: 'Apertura de una ronda multi-orden',
+    escenario: 'Apertura de una ronda multipedido V2',
     semilla: 'inicial',
     ruta: '/surtido',
     pasos: ['Revisa el listado.'],
@@ -380,7 +378,6 @@ const CASOS_HH: Caso[] = [
     cambio: 'listado',
     requisito: 'Restricciones para negar',
     escenario: 'Falla del servicio de negación',
-    extra: true,
     semilla: 'falla-negar',
     ruta: '/detalle/1458000',
     pasos: ['Toca "Negar producto", elige un motivo y acepta.'],
@@ -415,8 +412,8 @@ const CASOS_HH: Caso[] = [
     escenario: 'Finalizar con todos los códigos surtidos',
     semilla: 'pedido-unico-al-filo',
     ruta: '/surtido',
-    pasos: [ESCANEA('6200401', 1), 'En "Finalizar surtido" toca ✓ y luego "Volver al menú".'],
-    esperado: 'Se guarda el pedido y la ronda, se ve "¡Se completó la ronda de surtido exitosamente!" y regresa.',
+    pasos: [ESCANEA('6200401', 1), 'En "Finalizar surtido" toca ✓.'],
+    esperado: 'Se guarda el pedido y la ronda, ve el toast "Surtido finalizado" ("¡Se completó la ronda de surtido exitosamente!") y vuelve a la asignación de tareas, con la siguiente tarea ya cargada (R-20261021-02).',
     codigos: [c('6200401')],
   },
   {
@@ -503,7 +500,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'contenedores-sin-escaneo',
     cambio: 'listado',
-    requisito: 'Lista agregada por código',
+    requisito: 'Tarjetas de contenedor del listado',
     escenario: 'Contenedores antes del primer escaneo',
     semilla: 'inicial',
     ruta: '/surtido',
@@ -513,7 +510,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'escaneo-resalta',
     cambio: 'listado',
-    requisito: 'Lista agregada por código',
+    requisito: 'Tarjetas de contenedor del listado',
     escenario: 'Escaneo resalta su pedido y su código',
     semilla: 'inicial',
     ruta: '/surtido',
@@ -524,7 +521,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'resaltado-siguiente',
     cambio: 'listado',
-    requisito: 'Lista agregada por código',
+    requisito: 'Tarjetas de contenedor del listado',
     escenario: 'El resaltado pasa al siguiente pedido',
     semilla: 'cierra-pedido',
     ruta: '/surtido',
@@ -704,8 +701,8 @@ const CASOS_HH: Caso[] = [
   },
   {
     id: 'codigo-pasa-siguiente',
-    cambio: 'listado',
-    requisito: 'Avisos de cambio de pedido',
+    cambio: 'cierre',
+    requisito: 'Aviso de cambio de pedido de un código',
     escenario: 'El código pasa al siguiente pedido',
     semilla: 'cambio-pedido',
     ruta: '/surtido',
@@ -716,8 +713,8 @@ const CASOS_HH: Caso[] = [
   },
   {
     id: 'se-completa-primer-pedido',
-    cambio: 'listado',
-    requisito: 'Avisos de cambio de pedido',
+    cambio: 'cierre',
+    requisito: 'Aviso de pedido completado',
     escenario: 'Se completa el primer pedido',
     semilla: 'cierra-pedido',
     ruta: '/surtido',
@@ -772,7 +769,7 @@ const CASOS_HH: Caso[] = [
     codigos: [c('2010000'), c('2012000')],
   },
 
-  /* ================= 2026-11-05-multiorden-surtido-listado-cierre ================= */
+  /* ================= 2026-11-05-multipedido-surtido-listado-cierre ================= */
   {
     id: 'salir-tres-pedidos',
     cambio: 'cierre',
@@ -833,7 +830,7 @@ const CASOS_HH: Caso[] = [
     ruta: '/surtido',
     pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓.', 'En "Tarea incompleta" toca "Cancelar".'],
     esperado:
-      '"Tarea incompleta" (ícono de reloj): "Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo.", con el pedido sin registrar 100002 (contenedor B), los ya registrados (100001) y los botones "Cancelar" y "Reintentar". "Cancelar" vuelve a la toma de tarea; "Reintentar" termina la ronda ("Surtido finalizado").',
+      '"Tarea incompleta" (ícono de reloj): "Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo.", con el pedido sin registrar 100002 (contenedor B) y los botones "Cancelar" y "Reintentar". "Cancelar" desvincula la tarea completa: ningún pedido conserva lo registrado (tampoco 100001) y la tarea queda pendiente en la asignación, sin avance.',
     codigos: [c('2010000')],
   },
   {
@@ -955,7 +952,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'orden-familias',
     cambio: 'imagen-familia',
-    requisito: 'Agrupación por familia',
+    requisito: 'Orden dentro de la agrupación por familia',
     escenario: 'Orden de las familias',
     semilla: 'inicial',
     ruta: '/surtido',
@@ -975,7 +972,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'familia-menor-a-mayor',
     cambio: 'imagen-familia',
-    requisito: 'Agrupación por familia',
+    requisito: 'Orden dentro de la agrupación por familia',
     escenario: 'Códigos de una familia de menor a mayor',
     semilla: 'inicial',
     ruta: '/surtido',
@@ -985,7 +982,7 @@ const CASOS_HH: Caso[] = [
   {
     id: 'sin-familia',
     cambio: 'imagen-familia',
-    requisito: 'Agrupación por familia',
+    requisito: 'Orden dentro de la agrupación por familia',
     escenario: 'Productos sin familia',
     semilla: 'sin-familia',
     ruta: '/surtido',
@@ -1017,7 +1014,6 @@ const CASOS_HH: Caso[] = [
     cambio: 'imagen-familia',
     requisito: 'Bandera de agrupación por familia',
     escenario: 'Falla la consulta de la bandera',
-    extra: true,
     semilla: 'familia-falla',
     ruta: '/surtido',
     pasos: ['La consulta de la bandera falla. Revisa el orden del listado.'],

@@ -122,12 +122,12 @@ export function EscenariosPanel() {
       <aside
         ref={panelRef}
         className={`${styles.panel} ${explicando ? styles.panelConExplicacion : ''}`}
-        aria-label="Escenarios del surtido multi-orden"
+        aria-label="Escenarios del surtido multipedido V2"
         onScroll={(e) => guardar(SCROLL_KEY, e.currentTarget.scrollTop)}
       >
         <header className={styles.header}>
           <span className={styles.badge}>Demo para QA</span>
-          <h2 className={styles.title}>Surtido multi-orden</h2>
+          <h2 className={styles.title}>Surtido multipedido V2</h2>
           <p className={styles.subtitle}>
             {CASOS.length} escenarios de los specs de surtido. Elige uno: la HH se abre con su estado y la explicación
             del escenario aparece a un lado.

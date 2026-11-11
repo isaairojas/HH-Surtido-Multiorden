@@ -198,7 +198,7 @@
   text-align: center;
 }
 
-/* Aviso de negación en cascada (multi-orden; sin nodo en Figma). Mismo bloque gris que .datos,
+/* Aviso de negación en cascada (multipedido V2; sin nodo en Figma). Mismo bloque gris que .datos,
    con el borde del estatus negado para que se lea como advertencia. */
 .avisoNegacion {
   display: flex;
@@ -234,7 +234,7 @@
   white-space: nowrap;
 }
 
-/* ---- Aviso de cambio de pedido (multi-orden; sin nodo en Figma) ----
+/* ---- Aviso de cambio de pedido (multipedido V2; sin nodo en Figma) ----
    Desde el 2026-11-09 usa los bloques comunes (.datos y .transicion), sin el recuadro rojo. */
 
 /* Descripción en el bloque de datos: hasta dos líneas, para que se reconozca el producto sin alargar el modal. */

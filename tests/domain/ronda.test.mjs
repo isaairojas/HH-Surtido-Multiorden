@@ -257,7 +257,7 @@ test('la ronda se cierra solo cuando todos los pedidos están resueltos', () => 
 });
 
 /* ---------------------------------------------------------------- *
- * SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido (escalera)
+ * SDD 2026-10-26-multipedido-surtido-listado · Corregir la cantidad surtida de un pedido (escalera)
  * ---------------------------------------------------------------- */
 
 const corregir = (s, codigo) => rondaReducer(s, { type: 'corregir', codigo });
@@ -349,7 +349,7 @@ test('el estado inicial no comparte partidas con el mock entre llamadas', () => 
 });
 
 /* ---------------------------------------------------------------- *
- * SDD 2026-10-26-multiorden-surtido-listado · Avisos de cambio de pedido
+ * SDD 2026-10-26-multipedido-surtido-listado · Avisos de cambio de pedido
  * ---------------------------------------------------------------- */
 
 test('cambioDePedido detecta cuando las siguientes piezas del código van a otro pedido', () => {
@@ -371,7 +371,7 @@ test('sin cambio de destino, o sin destino, no hay aviso', () => {
 });
 
 /* ---------------------------------------------------------------- *
- * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda
+ * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda
  * ---------------------------------------------------------------- */
 
 /** Todo surtido salvo el limpiador del 100002, negada: su "Kit mantenimiento" queda incompleto. */

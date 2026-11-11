@@ -1,5 +1,5 @@
 /**
- * Modelo del surtido multi-orden (una ronda contiene N pedidos ya ordenados
+ * Modelo del surtido multipedido V2 (una ronda contiene N pedidos ya ordenados
  * por el algoritmo de picking; cada pedido tiene sus propias partidas).
  *
  * El orden de los pedidos y de las partidas dentro de un pedido se asume
@@ -15,9 +15,9 @@
  *     (regla de Revision-HH-v2); no se aplica el remanente.
  *
  * Mejoras SDD sobre el canónico de exodus-gtm-pwa (ver sdd/README.md):
- *   - SDD 2026-10-26-multiorden-armado-ronda: qué pedidos forman la ronda. Lo evalúa el back-end; este
+ *   - SDD 2026-10-26-multipedido-armado-ronda: qué pedidos forman la ronda. Lo evalúa el back-end; este
  *     módulo sigue recibiendo la ronda ya armada. El simulador del armado está en armado.ts.
- *   - SDD 2026-10-26-multiorden-surtido-listado: lo que este módulo simula (vista por código, asignación,
+ *   - SDD 2026-10-26-multipedido-surtido-listado: lo que este módulo simula (vista por código, asignación,
  *     negación, cierre de pedido).
  *   - Negación (2026-10-26, sustituye la regla de un solo pedido del 2026-10-21): se niegan el
  *     pedido en proceso y todos los posteriores que tengan el código, retirando lo ya surtido.
@@ -73,14 +73,14 @@ export type PartidaPedido = {
 /*
  * Etiqueta única (EU) y caducidad más próxima (PEPS): fuera de la demo (decisión del 2026-11-09). En la ronda
  * funcionan como en la canónica; solo cambia que la etiqueta se relaciona con el pedido que recibe la pieza y no
- * se repite en la ronda. Ver SDD 2026-10-26-multiorden-surtido-listado · Validación de etiqueta única (EU).
+ * se repite en la ronda. Ver SDD 2026-10-26-multipedido-surtido-listado · Validación de etiqueta única (EU).
  */
 
 /*
  * Campos que este modelo no tiene y que el canónico tampoco trae en IAssortmentProduct:
- *   - SDD 2026-10-26-multiorden-armado-ronda: servicio, tipo de pedido y origen por división de factura.
- *   - SDD 2026-10-26-multiorden-armado-ronda · Pedidos corporativos: groupId de la ronda y relOrdenID por pedido.
- * `cliente` sí existe aquí pero no en el contrato real (choque C4 de sdd/changes/2026-10-26-multiorden-surtido-listado/analisis-repositorio.md).
+ *   - SDD 2026-10-26-multipedido-armado-ronda: servicio, tipo de pedido y origen por división de factura.
+ *   - SDD 2026-10-26-multipedido-armado-ronda · Pedidos corporativos: groupId de la ronda y relOrdenID por pedido.
+ * `cliente` sí existe aquí pero no en el contrato real (choque C4 de sdd/changes/2026-10-26-multipedido-surtido-listado/analisis-repositorio.md).
  */
 export type Pedido = {
   id: string;
@@ -107,14 +107,14 @@ export type RondaAction =
   | { type: 'surtirPorCodigo'; codigo: string; cantidad: number }
   /**
    * Saca el pedido de la ronda (corporativo con orden de compra incompleto al finalizar).
-   * SDD 2026-10-26-multiorden-surtido-listado · Sacar el pedido de la ronda.
+   * SDD 2026-10-26-multipedido-surtido-listado · Sacar el pedido de la ronda.
    */
   | { type: 'retirarPedido'; pedidoId: string }
   /** Sustituye el estado completo: salir del listado descarta todo y la tarea vuelve a como llegó. */
   | { type: 'cargar'; estado: RondaState }
   /**
    * Regresa a 0 las piezas del código en el último pedido que tiene (`partidaACorregir`).
-   * SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un pedido.
+   * SDD 2026-10-26-multipedido-surtido-listado · Corregir la cantidad surtida de un pedido.
    */
   | { type: 'corregir'; codigo: string }
   /**
@@ -124,12 +124,12 @@ export type RondaAction =
   | { type: 'fijarCantidad'; codigo: string; pedidoId: string; cantidad: number }
   /**
    * Niega el código desde el pedido en proceso hasta el último de la ronda (`partidasANegar`).
-   * SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el detalle.
+   * SDD 2026-10-26-multipedido-surtido-listado · Negar producto desde el detalle.
    */
   | { type: 'negar'; codigo: string; motivo: string }
   /**
    * Niega la promoción en cada pedido donde quedó incompleta, retirando lo surtido.
-   * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
+   * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda.
    */
   | { type: 'negarPromocion'; promocionId: string }
   | { type: 'reiniciar' };
@@ -175,8 +175,8 @@ export function tareaSinAvance(s: RondaState): RondaState {
   return { ronda: { ...s.ronda, pedidos } };
 }
 
-/** Ronda multi-orden: más de un pedido. Con uno solo, el listado se comporta como hoy. */
-export const esMultiorden = (r: Ronda) => r.pedidos.length > 1;
+/** Ronda multipedido V2: más de un pedido. Con uno solo, el listado se comporta como hoy. */
+export const esMultipedidoV2 = (r: Ronda) => r.pedidos.length > 1;
 
 /* ------------------------------------------------------------------ *
  * Estado de una partida
@@ -317,7 +317,7 @@ export type ProductoVista = {
  * aparición: son atributos del producto, no del pedido, así que se asumen iguales
  * en todas las partidas del mismo código.
  *
- * SDD 2026-10-26-multiorden-surtido-listado · Lista agregada por código: esta función.
+ * SDD 2026-10-26-multipedido-surtido-listado · Lista agregada por código: esta función.
  * SDD 2026-10-26-surtido-listado-imagen-familia · Agrupación por familia: agruparía por familia dentro de
  * cada sección. Ojo: el V2 real ordena por ubicación o código, no por primera aparición.
  */
@@ -436,7 +436,7 @@ export type PartidaANegar = UbicacionPartida & {
 };
 
 /**
- * Partidas que se niegan juntas (SDD 2026-10-26-multiorden-surtido-listado · Negar producto desde el
+ * Partidas que se niegan juntas (SDD 2026-10-26-multipedido-surtido-listado · Negar producto desde el
  * detalle): la del pedido en proceso —el de menor orden que todavía necesita el código— y
  * las de todos los pedidos posteriores que lo tengan sin negar, aunque no se hayan surtido.
  * Los pedidos anteriores ya completos no se tocan. Vacío si ningún pedido necesita el código.
@@ -457,7 +457,7 @@ export function partidasANegar(r: Ronda, codigo: string): PartidaANegar[] {
 export type PartidaACorregir = UbicacionPartida & { pedidoId: string; contenedor: string; surtido: number; solicitado: number };
 
 /**
- * Partida que corrige el detalle (SDD 2026-10-26-multiorden-surtido-listado · Corregir la cantidad surtida de un
+ * Partida que corrige el detalle (SDD 2026-10-26-multipedido-surtido-listado · Corregir la cantidad surtida de un
  * pedido, regla del 2026-11-09): la del último pedido de la ronda con piezas del código. El escaneo
  * llena A, luego B, luego C, así que lo que sobra siempre quedó en el último; el surtidor no elige qué
  * pedido se queda la mercancía. Tras corregirla, la siguiente llamada da el pedido anterior con piezas
@@ -485,7 +485,7 @@ export type RechazoSurtido =
   | 'excede-solicitado'
   | 'excede-existencia';
 
-/** Textos de hoy (es.ts del V2) salvo los propios del multi-orden, marcados como provisionales. */
+/** Textos de hoy (es.ts del V2) salvo los propios del multipedido V2, marcados como provisionales. */
 export const AVISOS: Record<RechazoSurtido, { title: string; message: string }> = {
   'fuera-de-ronda': {
     title: 'Código inválido',
@@ -555,7 +555,7 @@ export function codigoNegado(r: Ronda, codigo: string): boolean {
 }
 
 /**
- * Cambio de pedido de un código (SDD 2026-10-26-multiorden-surtido-listado · Avisos de cambio de pedido):
+ * Cambio de pedido de un código (SDD 2026-10-26-multipedido-surtido-listado · Avisos de cambio de pedido):
  * el surtido dejó completa la partida del código en un pedido y las siguientes piezas ya van a
  * otro. Devuelve los dos pedidos, o null si el destino no cambió o ya no hay destino.
  */
@@ -610,7 +610,7 @@ function promocionIncompleta(partidas: PartidaPedido[]): boolean {
  * Promociones que impiden cerrar la ronda, agrupadas por id entre pedidos. Por el orden
  * consecutivo del surtido, el primer pedido puede completar la promoción y los siguientes no:
  * solo se listan los pedidos donde quedó incompleta.
- * SDD 2026-10-26-multiorden-surtido-listado · Promoción incompleta al finalizar la ronda.
+ * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda.
  */
 export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
   const porId = new Map<string, PromocionPendiente>();
@@ -639,7 +639,7 @@ export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
 }
 
 /* ------------------------------------------------------------------ *
- * Finalizar el surtido (SDD 2026-11-05-multiorden-surtido-listado-cierre · Bloqueos y fallas al finalizar)
+ * Finalizar el surtido (SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al finalizar)
  * ------------------------------------------------------------------ */
 
 /** Hay partidas en 0 sin negar: al finalizar de forma manual se pide negarlas primero. */

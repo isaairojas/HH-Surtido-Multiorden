@@ -17,7 +17,7 @@
  *   el 100003 la cinta va suelta, sin promoción. Negar el limpiador cuando ya está completo en el
  *   100001 deja incompleta la promoción del 100002 y bloquea el cierre de la ronda.
  *
- * La ronda cumple las reglas de armado (sdd/changes/2026-10-26-multiorden-armado-ronda): los tres pedidos
+ * La ronda cumple las reglas de armado (sdd/changes/2026-10-26-multipedido-armado-ronda): los tres pedidos
  * comparten algún código con la ronda (el 100003 comparte 2012000 y 1394010) y suman
  * 12 partidas, debajo del tope inicial de 15.
  *
@@ -122,7 +122,24 @@ export const RONDA_INICIAL: Ronda = {
   pedidos: [PEDIDO_100001, PEDIDO_100002, PEDIDO_100003],
 };
 
-export const EMPLEADO = { id: '9029', nombre: 'JUAN ANTONIO GUERRERO MEDINA' };
+/**
+ * Siguiente tarea de la cola: la que queda cargada en la asignación de tareas al finalizar la ronda
+ * (SDD 2026-10-26-multipedido-surtido-listado · Finalizar el surtido del pedido · "El cierre no muestra
+ * resumen de la ronda"). Una ronda de un solo pedido, para que se distinga a simple vista de la anterior.
+ */
+export const SIGUIENTE_RONDA: Ronda = {
+  id: 'R-20261021-02',
+  pedidos: [
+    {
+      id: '1004',
+      cliente: CLI_B,
+      partidas: [p('1978000', foco158, 2, UBI_3, MISC), p('2010000', foco1157, 1, UBI_3, MISC)],
+    },
+  ],
+};
+
+/** Empleado ficticio: la demo no lleva datos de empleados reales (clarificación 32 del 2026-11-10). */
+export const EMPLEADO = { id: '0001', nombre: 'SURTIDOR DE PRUEBA' };
 
 export const TAREA = {
   actividad: 'SURTIR RONDA DE PEDIDOS',

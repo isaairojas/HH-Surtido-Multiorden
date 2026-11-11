@@ -2,7 +2,7 @@
  * Configuración simulada de la demo: banderas de la sucursal, datos de la tarea y fallas del servidor.
  * Cada escenario (`src/navigation/escenarios.ts`) siembra la suya; la HH real las obtiene de sus servicios.
  * Solo existe para que QA vea en la demo los escenarios que dependen del servidor (SDD
- * 2026-10-26-multiorden-surtido-listado, 2026-11-05-multiorden-surtido-listado-cierre y 2026-10-26-surtido-listado-imagen-familia).
+ * 2026-10-26-multipedido-surtido-listado, 2026-11-05-multipedido-surtido-listado-cierre y 2026-10-26-surtido-listado-imagen-familia).
  */
 export type FallaBandera = 'conexion' | 'tiempo' | 'sesion';
 
@@ -10,11 +10,11 @@ export type Simulacion = {
   /* ---- Sucursal ---- */
   /** `BanderaListadoDeProductosEnHH`: abre el surtido por listado. */
   banderaListado: boolean;
-  /** `Bandera_MultiordenEnHH`: las rondas de varios pedidos se surten como multi-orden. */
-  multiordenEnHH: boolean;
-  /** Cómo falla la consulta de `Bandera_MultiordenEnHH` (null = responde bien). */
-  fallaBanderaMultiorden: FallaBandera | null;
-  /** `Bandera_MultiordenMismoCliente`: "Mismo cliente" en el Detalle de la ronda. */
+  /** `Bandera_MultipedidoEnHH`: las rondas de varios pedidos se surten como multipedido V2. */
+  multipedidoEnHH: boolean;
+  /** Cómo falla la consulta de `Bandera_MultipedidoEnHH` (null = responde bien). */
+  fallaBanderaMultipedido: FallaBandera | null;
+  /** `Bandera_MultipedidoMismoCliente`: "Mismo cliente" en el Detalle de la ronda. */
   mismoCliente: boolean;
   /** `Bandera_AgrupacionFamiliaEnHH`: agrupa el listado por familia. */
   agruparPorFamilia: boolean;
@@ -41,13 +41,13 @@ export type Simulacion = {
 };
 
 /**
- * Sucursal con multi-orden, listado y agrupación por familia. Fuera de la demo (2026-11-09): la etiqueta única
+ * Sucursal con multipedido V2, listado y agrupación por familia. Fuera de la demo (2026-11-09): la etiqueta única
  * (QR), la guía por voz y lo que se manda al servidor; siguen en la spec.
  */
 export const SIMULACION_INICIAL: Simulacion = {
   banderaListado: true,
-  multiordenEnHH: true,
-  fallaBanderaMultiorden: null,
+  multipedidoEnHH: true,
+  fallaBanderaMultipedido: null,
   mismoCliente: true,
   agruparPorFamilia: true,
   fallaBanderaFamilia: false,
