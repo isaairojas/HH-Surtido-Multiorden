@@ -32,7 +32,7 @@ for (const p of PRESETS_ARMADO) {
 }
 
 test('la zona no cambia el orden: sin desempates, manda el folio', () => {
-  const base = { vence: '12:00', creado: '2026-11-09 08:00', codigos: ['0486600'], servicio: 'local', tipo: 'cliente', direccion: 'X', minutos: 5 };
+  const base = { orden: 1, creado: '2026-11-09 08:00', codigos: ['0486600'], servicio: 'local', tipo: 'cliente', direccion: 'X', minutos: 5 };
   const orden = ordenarCola([
     { ...base, folio: 3, zona: 'Z1' },
     { ...base, folio: 1, zona: 'Z9' },
@@ -45,4 +45,13 @@ test('cola vacía: no hay ancla ni ronda', () => {
   const r = armarRonda([], CONFIG_INICIAL);
   assert.equal(r.ancla, null);
   assert.deepEqual(r.ronda, []);
+});
+
+test('precondición: en la ruta SP el multipedido V2 no interviene aunque la bandera esté activa', () => {
+  const base = { creado: '2026-11-09 08:00', codigos: ['0486600'], servicio: 'local', tipo: 'cliente', direccion: 'X', minutos: 5 };
+  const cola = [{ ...base, folio: 1, orden: 1 }, { ...base, folio: 2, orden: 2 }];
+  const r = armarRonda(cola, { ...CONFIG_INICIAL, RondaOrdenesSurtidoAPI: false });
+  assert.equal(r.modo, 'actual');
+  assert.equal(r.ruta, 'sp');
+  assert.deepEqual(r.evaluados, []);
 });

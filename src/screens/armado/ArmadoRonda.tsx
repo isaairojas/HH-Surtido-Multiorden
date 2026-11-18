@@ -20,6 +20,7 @@ import {
   type PedidoCola,
   type ReglaEvaluada,
   type ResultadoArmado,
+  type RutaArmado,
 } from '../../domain/armado';
 import { PRESETS_ARMADO, presetArmado, verificarPreset, type PresetArmado } from '../../domain/armadoEscenarios';
 import styles from './ArmadoRonda.module.css';
@@ -30,9 +31,14 @@ const CAPACIDADES: { id: PresetArmado['capacidad']; titulo: string }[] = [
 ];
 
 const MODOS: Record<ModoArmado, string> = {
-  actual: 'Algoritmo actual',
+  actual: 'Armado actual',
   unificado: 'Surtido unificado',
   multipedido: 'Multipedido V2',
+};
+
+const RUTAS: Record<RutaArmado, string> = {
+  servicio: 'por servicio',
+  sp: 'por SP',
 };
 
 const letra = (i: number) => String.fromCharCode(65 + i);
@@ -185,7 +191,8 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
         <h3 className={styles.seccionTitulo}>Configuración de la sucursal{cfg.sucursal ? ` ${cfg.sucursal}` : ''}</h3>
         <p className={styles.ayuda}>
           Configuración de ejemplo para reproducir el escenario. En la sucursal, las banderas, los parámetros y la franja
-          viven donde ya se configuran; la demo no fija sus valores.
+          viven donde ya se configuran; la demo no fija sus valores. Armado {RUTAS[r.ruta]}: el multipedido V2 solo aplica
+          con <code>RondaOrdenesSurtidoAPI</code> activa.
         </p>
         <div className={styles.chips}>
           {NOMBRES_BANDERAS.map((b) => (
@@ -220,8 +227,9 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
       <section className={styles.tarjeta}>
         <h3 className={styles.seccionTitulo}>Cola de pedidos por surtir, en el orden en que se atiende</h3>
         <p className={styles.ayuda}>
-          Orden: vencimiento, luego creación más antigua, luego menos partidas, luego folio menor. La zona se muestra,
-          pero no cuenta.
+          Orden: el que entrega el procesador de ordenamiento (
+          {cfg.Bandera_OrdenamientoPrioridadV2 ? 'ponderación V2' : 'holgura'}); solo si dos pedidos quedan empatados en
+          ese orden, creación más antigua, luego menos partidas, luego folio menor. La zona se muestra, pero no cuenta.
         </p>
         <div className={styles.tablaScroll}>
           <table className={styles.tabla}>
@@ -230,7 +238,7 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
                 <th>#</th>
                 <th>Folio</th>
                 <th>Papel</th>
-                <th>Vence</th>
+                <th title="Posición que entrega el procesador de ordenamiento; iguales = empate">Orden proc.</th>
                 <th>Creado</th>
                 <th>Partidas</th>
                 <th>Códigos</th>
@@ -253,7 +261,7 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
                     <td>
                       <span className={`${styles.papel} ${pp.clase}`}>{pp.texto}</span>
                     </td>
-                    <td>{p.vence}</td>
+                    <td className={styles.num}>{p.orden}</td>
                     <td>{p.creado.slice(11)}</td>
                     <td className={styles.num}>{p.codigos.length}</td>
                     <td className={styles.codigos} title={p.codigos.join(', ')}>
@@ -286,7 +294,11 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
 
       <section className={styles.tarjeta}>
         <h3 className={styles.seccionTitulo}>
-          Evaluación <span className={styles.modo}>{MODOS[r.modo]}</span>
+          Evaluación{' '}
+          <span className={styles.modo}>
+            {MODOS[r.modo]}
+            {r.modo === 'actual' ? ` ${RUTAS[r.ruta]}` : ''}
+          </span>
         </h3>
         <p className={styles.texto}>{r.explicacionModo}</p>
         {r.ancla && (

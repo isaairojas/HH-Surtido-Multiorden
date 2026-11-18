@@ -6,9 +6,14 @@
  * `catalogo-bandera-sucursal` para que QA las valide en pantalla, escenario por escenario. Es lógica pura:
  * no toca el store ni la ronda del surtido.
  *
- * Decisiones del usuario que aplica (2026-11-09):
- * - Orden de la cola: vencimiento, luego creación más antigua, luego menos partidas, luego folio menor.
- *   La zona no cuenta.
+ * Dónde aplica (2026-11-18, `impact.md` y clarificación 23): la ronda la arma `RecuperarOrdenSurtidoAPI` en las
+ * sucursales con `RondaOrdenesSurtidoAPI` (ruta por servicio). `Bandera_MultipedidoEnHH` solo se activa ahí; las
+ * sucursales sin `RondaOrdenesSurtidoAPI` arman por SP (`OrdenesporSurtir`) y este cambio no las toca.
+ *
+ * Decisiones del usuario que aplica (2026-11-09, precisadas el 2026-11-18):
+ * - Orden de la cola: el que entrega el procesador de ordenamiento (holgura, o ponderación con
+ *   `Bandera_OrdenamientoPrioridadV2`). Solo si dos pedidos quedan empatados en ese orden: creación más antigua,
+ *   luego menos partidas, luego folio menor. La zona no cuenta.
  * - Criterios acumulativos: el candidato cumple todos los activos (misma dirección, código compartido, tope).
  * - Un código cuenta una partida en cada pedido donde está (en dos pedidos suma dos).
  * - El tope solo filtra candidatos: el ancla no se descarta, pero entonces ningún candidato cabe.
@@ -30,8 +35,11 @@ export type TipoPedido = 'cliente' | 'traspaso' | 'balanceo';
 /** Pedido de la cola por surtir. Cada código del arreglo es una partida. */
 export type PedidoCola = {
   folio: number;
-  /** Hora de vencimiento, "HH:MM". */
-  vence: string;
+  /**
+   * Posición que le da el procesador de ordenamiento (1 = primero), por holgura o, con
+   * `Bandera_OrdenamientoPrioridadV2`, por ponderación. Dos pedidos con la misma posición están empatados.
+   */
+  orden: number;
   /** Fecha y hora de creación, "AAAA-MM-DD HH:MM". */
   creado: string;
   codigos: string[];
@@ -53,6 +61,10 @@ export type PedidoCola = {
 
 /** Banderas de la sucursal que intervienen en el armado. */
 export type BanderasArmado = {
+  /** Ruta de armado: activa = por servicio (`RecuperarOrdenSurtidoAPI`); inactiva = por SP (`OrdenesporSurtir`). */
+  RondaOrdenesSurtidoAPI: boolean;
+  /** Criterio del procesador de ordenamiento: activa = ponderación V2; inactiva = holgura. Solo se muestra. */
+  Bandera_OrdenamientoPrioridadV2: boolean;
   Bandera_MultipedidoEnHH: boolean;
   BndRondaXPedido: boolean;
   Bandera_RevisionPedidoEnHH: boolean;
@@ -83,6 +95,8 @@ export type ConfigSucursal = BanderasArmado & {
 };
 
 export const NOMBRES_BANDERAS: (keyof BanderasArmado)[] = [
+  'RondaOrdenesSurtidoAPI',
+  'Bandera_OrdenamientoPrioridadV2',
   'Bandera_MultipedidoEnHH',
   'BndRondaXPedido',
   'Bandera_RevisionPedidoEnHH',
@@ -97,13 +111,16 @@ export const MAX_PEDIDOS_INICIAL = 3;
 export const MAX_PARTIDAS_INICIAL = 15;
 
 /**
- * Configuración de ejemplo de la demo. Sigue la nota del catálogo para la liberación a productivo (multipedido V2
- * activo, misma dirección inactiva, código compartido y tope activos, traspasos inactivos); las banderas que ya
- * existen hoy (`BndRondaXPedido`, `Bandera_RevisionPedidoEnHH`, `BndUnificarRondasMontos`) van inactivas y
- * cada escenario las enciende cuando las necesita. La franja de 30 min es un ejemplo: la demo no define valores
- * reales (revisión del 2026-11-09), solo muestra cómo están configurados.
+ * Configuración de ejemplo de la demo. Sucursal con armado por servicio (`RondaOrdenesSurtidoAPI` activa,
+ * precondición del multipedido V2) y procesador por holgura. Sigue la nota del catálogo para la liberación a
+ * productivo (multipedido V2 activo, misma dirección inactiva, código compartido y tope activos, traspasos
+ * inactivos); las banderas que ya existen hoy (`BndRondaXPedido`, `Bandera_RevisionPedidoEnHH`,
+ * `BndUnificarRondasMontos`) van inactivas y cada escenario las enciende cuando las necesita. La franja de 30 min
+ * es un ejemplo: la demo no define valores reales (revisión del 2026-11-09), solo muestra cómo están configurados.
  */
 export const CONFIG_INICIAL: ConfigSucursal = {
+  RondaOrdenesSurtidoAPI: true,
+  Bandera_OrdenamientoPrioridadV2: false,
   Bandera_MultipedidoEnHH: true,
   BndRondaXPedido: false,
   Bandera_RevisionPedidoEnHH: false,
@@ -132,8 +149,12 @@ export type EvaluacionCandidato = {
   reglas: ReglaEvaluada[];
 };
 
+/** Ruta de armado de la sucursal. */
+export type RutaArmado = 'servicio' | 'sp';
+
 export type ResultadoArmado = {
   modo: ModoArmado;
+  ruta: RutaArmado;
   explicacionModo: string;
   /** La cola en el orden en que se atiende. */
   cola: PedidoCola[];
@@ -160,11 +181,14 @@ export type ResultadoArmado = {
 const etiquetaServicio = (s: Servicio) => (s === 'local' ? 'local' : 'foráneo');
 const etiquetaTipo = (t: TipoPedido) => (t === 'cliente' ? 'pedido de cliente' : t === 'traspaso' ? 'traspaso' : 'balanceo manual');
 
-/** Orden de la cola: vencimiento, creación más antigua, menos partidas, folio menor. La zona no cuenta. */
+/**
+ * Orden de la cola: el del procesador de ordenamiento; solo en un empate de ese orden, creación más antigua, menos
+ * partidas y folio menor. La zona no cuenta.
+ */
 export function ordenarCola(cola: PedidoCola[]): PedidoCola[] {
   return [...cola].sort(
     (a, b) =>
-      a.vence.localeCompare(b.vence) ||
+      a.orden - b.orden ||
       a.creado.localeCompare(b.creado) ||
       a.codigos.length - b.codigos.length ||
       a.folio - b.folio,
@@ -198,9 +222,11 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
   const maxPartidas = config.maxPartidas ?? MAX_PARTIDAS_INICIAL;
   const ancla = ordenada[0] ?? null;
   const notas: string[] = [];
+  const ruta: RutaArmado = config.RondaOrdenesSurtidoAPI ? 'servicio' : 'sp';
 
   const base = (modo: ModoArmado, explicacionModo: string): ResultadoArmado => ({
     modo,
+    ruta,
     explicacionModo,
     cola: ordenada,
     fueraDeCola,
@@ -217,14 +243,22 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
     notas,
   });
 
-  // Convivencia con las rondas actuales.
-  if (!config.Bandera_MultipedidoEnHH) {
-    notas.push(
-      'El simulador no reproduce el algoritmo actual (OrdenesporSurtir: hasta 6 documentos, preferencia por la zona y tiempo por franja): solo muestra que el multipedido V2 no interviene.',
-    );
+  // Convivencia con las rondas actuales: sin la bandera, o en la ruta SP (precondición del 2026-11-13), cada
+  // sucursal sigue con el armado actual de su ruta.
+  if (!config.Bandera_MultipedidoEnHH || ruta === 'sp') {
+    const armadoRuta =
+      ruta === 'servicio'
+        ? 'el armado actual por servicio (RecuperarOrdenSurtidoAPI: orden del procesador de ordenamiento y corte por el tiempo de la franja, sin tope de documentos ni preferencia por zona)'
+        : 'el armado actual por SP (OrdenesporSurtir: preferencia por la zona, hasta 6 documentos y tiempo de la franja)';
+    notas.push('El simulador no reproduce el armado actual: solo muestra que el multipedido V2 no interviene.');
+    if (config.Bandera_MultipedidoEnHH) {
+      notas.push(
+        'Bandera_MultipedidoEnHH solo se activa en sucursales con RondaOrdenesSurtidoAPI (precondición): en la ruta SP no tiene efecto.',
+      );
+    }
     return base(
       'actual',
-      'Bandera_MultipedidoEnHH inactiva: la ronda se arma con el algoritmo actual, que sigue prefiriendo órdenes de la misma zona, y se surte como hoy. No se evalúan candidatos multipedido V2.',
+      `${config.Bandera_MultipedidoEnHH ? 'Sucursal sin RondaOrdenesSurtidoAPI' : 'Bandera_MultipedidoEnHH inactiva'}: la ronda se arma con ${armadoRuta}, y se surte como hoy. No se evalúan candidatos multipedido V2.`,
     );
   }
   if (!ancla) {
@@ -320,6 +354,7 @@ export function armarRonda(cola: PedidoCola[], config: ConfigSucursal): Resultad
 
   return {
     modo: 'multipedido',
+    ruta,
     explicacionModo: multipedido,
     cola: ordenada,
     fueraDeCola,

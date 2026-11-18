@@ -4,7 +4,7 @@
  * (bloque "Pedidos" de la propuesta A). "Mismo cliente" se marca en el Detalle de la ronda.
  *
  * SDD 2026-10-26-multipedido-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
- * (próximos a vencer) lo da el procesador de ordenamiento; la HH no reordena.
+ * (holgura, o ponderación V2) lo da el procesador de ordenamiento; la HH no reordena.
  *
  * SDD 2026-10-26-multipedido-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
  * bandera de multipedido V2: "Aceptar" enruta según las banderas de la sucursal (simuladas en la demo):

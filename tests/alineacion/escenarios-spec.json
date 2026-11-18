@@ -1,7 +1,7 @@
 {
   "origen": {
     "repositorio": "exodus-gtm-pwa",
-    "commit": "43d0df28 2026-11-11 chore(sdd): record gate P for the four multipedido changes"
+    "commit": "21afd270 2026-11-18 docs(sdd): armado por servicio como línea base del multipedido V2"
   },
   "cambios": {
     "listado": "2026-10-26-multipedido-surtido-listado",
@@ -866,7 +866,7 @@
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Convivencia con las rondas actuales",
-      "escenario": "Sin la bandera, la zona sigue ordenando"
+      "escenario": "Sin la bandera, cada sucursal sigue con su ruta"
     },
     {
       "cambio": "armado",
@@ -896,31 +896,31 @@
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Pedido ancla y ventana de evaluación",
-      "escenario": "Vencimientos distintos"
+      "escenario": "Manda el orden del procesador"
     },
     {
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Pedido ancla y ventana de evaluación",
-      "escenario": "Empate de vencimiento en el ancla"
+      "escenario": "Empate en el orden para el ancla"
     },
     {
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Pedido ancla y ventana de evaluación",
-      "escenario": "Empate de vencimiento entre candidatos"
+      "escenario": "Empate en el orden entre candidatos"
     },
     {
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Pedido ancla y ventana de evaluación",
-      "escenario": "Empate de vencimiento y de creación"
+      "escenario": "Empate en el orden y en la creación"
     },
     {
       "cambio": "armado",
       "capacidad": "elegibilidad-ronda-multipedido",
       "requisito": "Pedido ancla y ventana de evaluación",
-      "escenario": "Empate en vencimiento, creación y partidas"
+      "escenario": "Empate en el orden, la creación y las partidas"
     },
     {
       "cambio": "armado",
