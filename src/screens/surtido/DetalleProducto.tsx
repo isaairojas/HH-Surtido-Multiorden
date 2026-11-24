@@ -52,6 +52,7 @@ import {
   partidaACorregir,
   partidaEn,
   partidasANegar,
+  pedidoCompleto,
   piezasEn,
   productoVista,
   proximaPartidaPara,
@@ -60,6 +61,8 @@ import {
   type RechazoSurtido,
 } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
+import { callar, debeLeer } from '../../domain/voz';
+import { fallaUnaVez } from '../../domain/simulacion';
 import { CambioPedidoModal, ConfirmarCorreccionModal, NegarProductoModal } from './overlays/SurtidoModals';
 import { AvisoModal, ConNegritas, TextoAviso } from './overlays/Avisos';
 import { ContenedorLetra } from './Contenedores';
@@ -70,7 +73,7 @@ import styles from './DetalleProducto.module.css';
 export function DetalleProducto() {
   const { codigo = '' } = useParams();
   const navigate = useNavigate();
-  const { ronda, dispatch, mostrarToast, setUltimoEscaneo, simulacion } = useStore();
+  const { ronda, dispatch, mostrarToast, setUltimoEscaneo, simulacion, leer } = useStore();
   const [negando, setNegando] = useState(false);
   /** "Pedido surtido" al guardar una cantidad que pasa el código a otro pedido; con "Entendido" se regresa. */
   const [cambio, setCambio] = useState<{ desde: string; contenedor: string; cantidad: number } | null>(null);
@@ -80,6 +83,23 @@ export function DetalleProducto() {
   const [confirmandoCorreccion, setConfirmandoCorreccion] = useState(false);
 
   const vista = productoVista(ronda.ronda, codigo);
+  // Con un solo pedido (desde el inicio o porque salieron los demás), el detalle es el de hoy: sin "Surtido por
+  // pedido" ni corregir por contenedor (SDD 2026-11-05-multipedido-surtido-listado-cierre · Alcance de la ronda de un
+  // solo pedido).
+  const multipedido = esMultipedidoV2(ronda.ronda);
+
+  /*
+   * Guía por voz en el detalle (Guía por voz en el listado, clarificación 41): con la lectura activa lee código,
+   * ubicación, rack y nivel, y el pasillo con `Bandera_UbicacionesUDN`; se detiene al salir.
+   */
+  useEffect(() => {
+    if (!vista || !debeLeer(simulacion)) return;
+    const [zona, pas, rack, niv] = vista.ubicacion;
+    const pasilloVoz = simulacion.ubicacionesUDN ? `, pasillo ${pas}` : '';
+    leer(`Código ${vista.codigo}, ubicación ${zona}${pasilloVoz}, rack ${rack}, nivel ${niv}`);
+    return callar;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigo]);
   const destino = proximaPartidaPara(ronda.ronda, codigo);
   const aNegar = partidasANegar(ronda.ronda, codigo);
   // Pedido que corrige el botón: el en curso si tiene piezas; si está en 0, el anterior con piezas.
@@ -132,7 +152,8 @@ export function DetalleProducto() {
     dispatch(accion);
     sonar('ok');
     setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
-    if (c) return setCambio({ desde: c.desde.id, contenedor: c.letraDesde, cantidad: piezasEn(c.desde, codigo) });
+    // Si el pedido quedó completo, avisa "Pedido completado" en el listado, que sustituye a "Pedido surtido".
+    if (c && !pedidoCompleto(c.desde)) return setCambio({ desde: c.desde.id, contenedor: c.letraDesde, cantidad: piezasEn(c.desde, codigo) });
     irAlListado();
   };
 
@@ -151,13 +172,18 @@ export function DetalleProducto() {
 
   const negar = (motivo: string) => {
     setNegando(false);
-    if (simulacion.fallaNegar) {
+    // Un registro por pedido y todo o nada: si falla el de cualquiera de los afectados, ninguno queda negado ni pierde
+    // lo surtido (clarificación 53, D-01), y el usuario puede reintentar.
+    const falla = simulacion.fallaNegar;
+    if (falla && (falla === '*' || aNegar.some((x) => x.pedidoId === falla)) && fallaUnaVez(`negar-${codigo}`)) {
       sonar('error');
-      return mostrarToast({ kind: 'error', title: 'Error', message: 'Ocurrió un error al negar el producto, por favor intenta de nuevo.' });
+      return mostrarToast({
+        kind: 'error',
+        title: 'No es posible negar el producto',
+        message: 'Ocurrió un error al negar el producto, por favor intenta de nuevo.',
+      });
     }
     dispatch({ type: 'negar', codigo, motivo });
-    const pedidos = aNegar.map((a) => a.pedidoId).join(', ');
-    mostrarToast({ kind: 'error', title: 'Producto negado', message: `${codigo} negado en ${pedidos} por: ${motivo}` });
     irAlListado();
   };
 
@@ -185,11 +211,15 @@ export function DetalleProducto() {
                 <LabeledField label="Existencia" value={vista.existencia} valueBold />
                 <LabeledField
                   label={
-                    <>
-                      Solicitado
-                      <br />
-                      ronda
-                    </>
+                    multipedido ? (
+                      <>
+                        Solicitado
+                        <br />
+                        ronda
+                      </>
+                    ) : (
+                      'Solicitado'
+                    )
                   }
                   value={vista.solicitadoTotal}
                 />
@@ -200,6 +230,19 @@ export function DetalleProducto() {
           {/* Surtido por pedido — FR-013. Interfaz de 41:2429 (propuesta A): una fila por contenedor.
               La fila del pedido que se está surtiendo lleva "Cantidad surtida" como el V2 (clarify 28); las demás
               quedan en gris. */}
+          {!multipedido && partidaDestino && (
+            // Pedido único: "Cantidad surtida" como hoy, sin bloque por pedido ni corregir por contenedor.
+            <section className={styles.cantidadUnica} aria-label="Cantidad surtida">
+              <span className={styles.cantidadRotulo}>Cantidad surtida</span>
+              <CantidadSurtida
+                valor={cantidad}
+                maximo={partidaDestino.solicitado}
+                habilitada={surtidoGuardado > 0}
+                onCambiar={setCantidad}
+              />
+            </section>
+          )}
+          {multipedido && (
           <section className={styles.desglose} aria-labelledby="surtido-por-pedido">
             <div className={styles.desgloseHead}>
               <h3 id="surtido-por-pedido" className={styles.desgloseTitulo}>
@@ -237,12 +280,15 @@ export function DetalleProducto() {
                         {p.estado === 'negado' ? (
                           <Chip status="negado" />
                         ) : esDestino && partidaDestino ? (
+                          <div className={styles.cantidadConRotulo}>
+                          <span className={styles.cantidadRotulo}>Cantidad surtida</span>
                           <CantidadSurtida
                             valor={cantidad}
                             maximo={partidaDestino.solicitado}
                             habilitada={surtidoGuardado > 0}
                             onCambiar={setCantidad}
                           />
+                          </div>
                         ) : (
                           <Chip status={statusDeEstado(p.estado)} value={p.surtido} total={p.solicitado} />
                         )}
@@ -253,6 +299,7 @@ export function DetalleProducto() {
               })}
             </ul>
           </section>
+          )}
 
           {bloqueado && <p className={styles.consulta}>Este producto ya no tiene partidas pendientes en la ronda.</p>}
         </div>
@@ -275,6 +322,7 @@ export function DetalleProducto() {
           codigo={vista.codigo}
           descripcion={vista.descripcion}
           afectadas={aNegar}
+          multipedido={multipedido}
           onCancel={() => setNegando(false)}
           onConfirm={negar}
         />

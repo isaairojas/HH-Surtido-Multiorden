@@ -74,11 +74,14 @@ export function NegarProductoModal({
   codigo,
   descripcion,
   afectadas,
+  multipedido = true,
   onCancel,
   onConfirm,
 }: {
   codigo: string;
   descripcion: string;
+  /** Con un solo pedido no hay cascada: el modal es el de hoy, sin el aviso de pedidos afectados. */
+  multipedido?: boolean;
   /** Pedido en proceso primero y luego los posteriores, en el orden de la ronda. */
   afectadas: { pedidoId: string; contenedor: string; surtido: number; solicitado: number }[];
   onCancel: () => void;
@@ -112,6 +115,7 @@ export function NegarProductoModal({
           </div>
         </div>
 
+        {multipedido && (
         <div className={styles.avisoNegacion} role="note">
           <p>
             El producto se negará en el pedido <b>{afectadas[0].pedidoId}</b>
@@ -132,14 +136,13 @@ export function NegarProductoModal({
           <ul className={styles.afectadas}>
             {afectadas.map((a) => (
               <li key={a.pedidoId} className={styles.afectada}>
-                <span>
-                  {a.contenedor} · Pedido {a.pedidoId}
-                </span>
-                <span>{a.surtido > 0 ? `${a.surtido} de ${a.solicitado} surtidas` : `${a.solicitado} sin surtir`}</span>
+                {/* Texto de la spec (Restricciones para negar · "Aviso con pedidos sin surtir"). */}
+                <span>{`Pedido ${a.pedidoId}: ${a.surtido > 0 ? `${a.surtido} de ${a.solicitado} surtidas` : `${a.solicitado} sin surtir`}`}</span>
               </li>
             ))}
           </ul>
         </div>
+        )}
 
         <div className={styles.dropdown}>
           {abierto && (
@@ -217,7 +220,7 @@ export function CambioPedidoModal({
         <ModalHeader title="Pedido surtido" gap={18} />
 
         <p className={styles.text}>
-          El pedido <b>{desde}</b> ya fue surtido con el siguiente producto:
+          El pedido <b>{desde}</b> ya fue surtido con el siguiente producto
         </p>
 
         <div className={styles.datos}>

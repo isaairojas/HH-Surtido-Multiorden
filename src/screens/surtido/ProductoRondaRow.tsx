@@ -80,9 +80,13 @@ export function ProductoRondaRow({ producto: v, multipedido = true, marcado, onC
         </div>
         {multipedido && (
           <div className={styles.desglose}>
-            {v.presencias.map((p) => (
-              <span key={p.pedidoId} className={`${styles.tag} ${claseTag(p)}`} title={`Pedido ${p.pedidoId}`}>
-                <b>{p.contenedor}</b> {p.estado === 'negado' ? 'Negado' : `${p.surtido}/${p.solicitado}`}
+            {/* "A 0/11 · B 0/5" (Lista agregada por código): cada contenedor en su etiqueta, separados por " · ". */}
+            {v.presencias.map((p, i) => (
+              <span key={p.pedidoId} className={styles.tagGrupo}>
+                {i > 0 && <span className={styles.separador}> · </span>}
+                <span className={`${styles.tag} ${claseTag(p)}`} title={`Pedido ${p.pedidoId}`}>
+                  <b>{p.contenedor}</b> {p.estado === 'negado' ? 'Negado' : `${p.surtido}/${p.solicitado}`}
+                </span>
               </span>
             ))}
           </div>

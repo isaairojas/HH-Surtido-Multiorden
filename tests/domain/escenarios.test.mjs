@@ -252,8 +252,8 @@ test('EU · Caducidad más próxima en una ronda: "Etiqueta inválida" y, al con
 });
 
 test('Guía por voz: "Ronda de 3 pedidos, …" sin folio y "Pedido 1001, …" con un solo pedido', () => {
-  assert.equal(resumenVoz(ronda('voz-ronda-58')), 'Ronda de 3 pedidos, 0 códigos surtidos, 0 surtidos parcialmente y 7 pendientes de surtir');
-  assert.ok(!resumenVoz(ronda('voz-ronda-58')).includes('R-2026'));
+  assert.equal(resumenVoz(ronda('voz-ronda-31')), 'Ronda de 3 pedidos, 0 códigos surtidos, 0 surtidos parcialmente y 7 pendientes de surtir');
+  assert.ok(!resumenVoz(ronda('voz-ronda-31')).includes('G-500'));
   assert.equal(resumenVoz(ronda('voz-pedido-unico-58')), 'Pedido 1001, 0 códigos surtidos, 0 surtidos parcialmente y 4 pendientes de surtir');
 });
 
@@ -262,4 +262,81 @@ test('Guía por voz: la tarea 58 siempre lee; la 31 solo con "Lectura de element
   assert.equal(debeLeer(sim('voz-58-apagada')), true);
   assert.equal(debeLeer(sim('voz-31-encendida')), true);
   assert.equal(debeLeer({ ...SIMULACION_INICIAL, tipoTarea: 31, lecturaElementos: false }), false);
+});
+
+/* ---- Revisión del 2026-11-24 (specs con el gate P del 2026-11-24) ---- */
+
+const sim = (id) => ({ ...SIMULACION_INICIAL, ...semilla(id).simulacion });
+
+test('Familia · Familia con texto de relleno: 3001, 1500, 2500', () => {
+  assert.deepEqual(orden(ronda('familia-relleno'), { familia: true, ubicaciones: false }), ['3001', '1500', '2500']);
+});
+
+test('Familia · Ningún producto con familia: por código, no por ubicación', () => {
+  assert.deepEqual(orden(ronda('ninguna-familia'), { familia: true, ubicaciones: true }), [
+    '0486600', '1365800', '1394010', '1978000', '2010000', '2012000', '2389475',
+  ]);
+});
+
+test('Familia · Producto con la clasificación incompleta: al final de su sección', () => {
+  assert.deepEqual(orden(ronda('clasificacion-incompleta'), { familia: true, ubicaciones: false }), [
+    '2389475', '1365800', '1394010', '1978000', '2010000', '2012000', '0486600',
+  ]);
+});
+
+test('Familia · La tarea llega sin familias: el orden actual, por ubicación', async () => {
+  const { ordenDelListado } = await import('../../src/domain/simulacion.ts');
+  const o = ordenDelListado(sim('sin-dato-familia'));
+  assert.deepEqual(o, { familia: false, ubicaciones: true });
+  assert.deepEqual(orden(ronda('sin-dato-familia'), o), ['1394010', '2012000', '0486600', '1365800', '2389475', '1978000', '2010000']);
+});
+
+test('Corregir · Corregir un pedido con etiquetas únicas: E1 se libera y se vuelve a aceptar en C', () => {
+  const s = conEtiquetas('eu-correccion');
+  const corregido = rondaReducer(s, { type: 'corregir', codigo: '0486600' });
+  assert.equal(desglose(corregido.ronda, '0486600'), 'A 11/11 · B 5/5 · C 0/3');
+  assert.deepEqual(corregido.etiquetas, []);
+  const res = interpretarLectura(corregido, E1, opciones('eu-correccion'));
+  assert.equal(res.tipo, 'surtir');
+  const despues = rondaReducer(corregido, { type: 'surtirPorCodigo', codigo: res.codigo, cantidad: res.cantidad, etiqueta: res.etiqueta });
+  assert.equal(desglose(despues.ronda, '0486600'), 'A 11/11 · B 5/5 · C 1/3');
+});
+
+test('Promoción · Incompleta sin códigos negados: solo 1002, con el avance de sus dos códigos', () => {
+  const pendientes = promocionesPendientes(ronda('promocion-sin-negados'));
+  assert.equal(pendientes.length, 1);
+  assert.deepEqual(pendientes[0].pedidos.map((p) => p.pedidoId), ['1002']);
+  assert.deepEqual(pendientes[0].pedidos[0].partidas.map((x) => `${x.codigo} ${x.surtido}/${x.solicitado}`), ['0486600 5/5', '2389475 1/2']);
+});
+
+test('Orden de los avisos · Solo códigos en cero: la promoción de 1002 no cuenta como incompleta', () => {
+  assert.equal(promocionesPendientes(ronda('solo-ceros')).length, 0);
+  assert.equal(codigosParciales(ronda('solo-ceros')).length, 0);
+});
+
+test('La ronda se queda sin pedidos · Todo negado: solo falta negar 2010000 de 1003', () => {
+  const r = ronda('todo-negado');
+  const vivas = r.pedidos.flatMap((p) => p.partidas.filter((x) => x.motivoNegacion === null).map((x) => `${p.id} ${x.codigo}`));
+  assert.deepEqual(vivas, ['1003 2010000']);
+  const negado = rondaReducer({ ronda: r }, { type: 'negar', codigo: '2010000', motivo: 'Sin existencia' }).ronda;
+  assert.ok(negado.pedidos.every((p) => p.partidas.every((x) => x.motivoNegacion !== null)));
+});
+
+test('Asignación · solo la ronda que armó el multipedido V2 es ronda V2', async () => {
+  const { esRondaV2 } = await import('../../src/domain/simulacion.ts');
+  assert.equal(esRondaV2(sim('tareas'), 3), true);
+  for (const id of ['factura-dividida', 'paqueteria', 'sugerencia-embarque', 'falla-bandera-listado', 'falla-bandera-conexion']) {
+    assert.equal(esRondaV2(sim(id), 3), false, id);
+  }
+  assert.equal(esRondaV2({ ...SIMULACION_INICIAL, tipoTarea: 58 }, 3), false, 'los balanceos no forman ronda V2');
+});
+
+test('Cliente en el detalle de la ronda: 1001 y 1003 del 48213, 1002 del 51077', () => {
+  const r = ronda('tareas');
+  assert.deepEqual(r.pedidos.map((p) => `${p.cliente.id} · ${p.cliente.nombre}`), [
+    '48213 · AUTOPARTES DEL VALLE SA DE CV',
+    '51077 · REFACCIONARIA LA ÚNICA',
+    '48213 · AUTOPARTES DEL VALLE SA DE CV',
+  ]);
+  assert.equal(r.id, 'G-500');
 });

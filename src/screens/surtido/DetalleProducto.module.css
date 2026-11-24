@@ -237,3 +237,25 @@
 .flex1 {
   flex: 1 0 0;
 }
+
+/* "Cantidad surtida" con su rótulo visible, como hoy (pedido único y fila del pedido en surtido). */
+.cantidadUnica {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cantidadConRotulo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cantidadRotulo {
+  font: var(--font-b1-body);
+  font-weight: 700;
+  line-height: normal;
+  color: var(--color-negro, #222);
+}

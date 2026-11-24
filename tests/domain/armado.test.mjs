@@ -1,20 +1,26 @@
 /**
- * Pruebas del simulador del armado de la ronda multipedido V2 (SDD 2026-10-26-multipedido-armado-ronda).
- * Una prueba por escenario de los specs `elegibilidad-ronda-multipedido` y `catalogo-bandera-sucursal`:
- * cada preset de `armadoEscenarios.ts` declara lo que el spec espera y `verificarPreset` lo compara.
+ * Pruebas del simulador del armado (SDD 2026-10-26-multipedido-armado-ronda, con sus deltas del servicio en
+ * specs-servicio/, y 2026-11-20-multipedido-configuracion-armado). Una prueba por escenario: cada preset de
+ * `armadoEscenarios.ts` declara lo que el spec espera y `verificarPreset` lo compara.
  *
  * Correr con: node --import ./tests/domain/loader.mjs --test tests/domain/armado.test.mjs
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import { armarRonda, CONFIG_INICIAL, ordenarCola } from '../../src/domain/armado.ts';
 import { PRESETS_ARMADO, verificarPreset } from '../../src/domain/armadoEscenarios.ts';
 
-test('hay un preset por cada uno de los 61 escenarios de los dos specs, sin ids repetidos', () => {
-  assert.equal(PRESETS_ARMADO.length, 61);
-  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'elegibilidad-ronda-multipedido').length, 52);
-  assert.equal(PRESETS_ARMADO.filter((p) => p.capacidad === 'catalogo-bandera-sucursal').length, 9);
+test('hay un preset por cada escenario del armado y de la configuración en la foto de las specs, sin ids repetidos', () => {
+  const foto = JSON.parse(fs.readFileSync(new URL('../alineacion/escenarios-spec.json', import.meta.url), 'utf8'));
+  const clave = (cambio, capacidad, requisito, escenario) => `${cambio} · ${capacidad} · ${requisito} · ${escenario}`;
+  const enSpec = foto.escenarios
+    .filter((e) => e.cambio === 'armado' || e.cambio === 'configuracion')
+    .map((e) => clave(e.cambio, e.capacidad, e.requisito, e.escenario))
+    .sort();
+  const enDemo = PRESETS_ARMADO.map((p) => clave(p.cambio ?? 'armado', p.capacidad, p.requisito, p.escenario)).sort();
+  assert.deepEqual(enDemo, enSpec);
   assert.equal(new Set(PRESETS_ARMADO.map((p) => p.id)).size, PRESETS_ARMADO.length);
 });
 
@@ -50,8 +56,16 @@ test('cola vacía: no hay ancla ni ronda', () => {
 test('precondición: en la ruta SP el multipedido V2 no interviene aunque la bandera esté activa', () => {
   const base = { creado: '2026-11-09 08:00', codigos: ['0486600'], servicio: 'local', tipo: 'cliente', direccion: 'X', minutos: 5 };
   const cola = [{ ...base, folio: 1, orden: 1 }, { ...base, folio: 2, orden: 2 }];
+  assert.equal(armarRonda(cola, CONFIG_INICIAL).modo, 'multipedido');
   const r = armarRonda(cola, { ...CONFIG_INICIAL, RondaOrdenesSurtidoAPI: false });
   assert.equal(r.modo, 'actual');
   assert.equal(r.ruta, 'sp');
   assert.deepEqual(r.evaluados, []);
+});
+
+test('Bandera_RevisionPedidoEnHH no participa en el armado (clarificación 48)', () => {
+  const base = { creado: '2026-11-09 08:00', codigos: ['0486600'], servicio: 'local', tipo: 'cliente', direccion: 'X', minutos: 5 };
+  const cola = [{ ...base, folio: 1, orden: 1 }, { ...base, folio: 2, orden: 2 }];
+  const r = armarRonda(cola, { ...CONFIG_INICIAL, Bandera_RevisionPedidoEnHH: true });
+  assert.deepEqual(r.ronda.map((p) => p.folio), [1, 2]);
 });

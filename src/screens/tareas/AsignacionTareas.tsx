@@ -6,11 +6,15 @@
  * SDD 2026-10-26-multipedido-surtido-listado · Pedidos de la ronda en la tarea asignada: esta lista. El orden
  * (holgura, o ponderación V2) lo da el procesador de ordenamiento; la HH no reordena.
  *
- * SDD 2026-10-26-multipedido-surtido-listado · Inicio de surtido y elección de versión / Falla de la consulta de la
- * bandera de multipedido V2: "Aceptar" enruta según las banderas de la sucursal (simuladas en la demo):
- * listado de un pedido, Detalle de la ronda multipedido V2, surtido anterior o inicio de sesión.
+ * SDD 2026-10-26-multipedido-surtido-listado · Inicio de surtido y elección de versión / Ronda multipedido V2 en la
+ * asignación / Falla de la consulta de la bandera de multipedido V2 / Falla al cargar la ronda: "Aceptar" enruta según
+ * las banderas de la sucursal y quién armó la ronda (simulados en la demo): listado de un pedido, Detalle de la ronda
+ * multipedido V2, surtido anterior o inicio de sesión. La división de factura, la paquetería y la sugerencia a
+ * embarques siguen su flujo de hoy (surtido anterior), con prioridad sobre el multipedido V2.
+ * Si la consulta de los pedidos de la ronda falla al mostrar la tarea, se ve como hoy (sin "Contenedor {letra}" ni
+ * aviso); si falla al aceptar, o un pedido llega sin datos, alerta y la tarea no se toma: sigue aquí para reintentar.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import userIcon from '@assets/icons/user.svg';
 import tareaIcon from '@assets/icons/user-tarea.svg';
@@ -28,6 +32,7 @@ import { EMPLEADO, TAREA } from '../../mocks/ronda';
 import { useStore } from '../../store/AppStore';
 import { AvisoModal, TextoAviso } from '../surtido/overlays/Avisos';
 import { letraDe } from '../../domain/ronda';
+import { esRondaV2, type FallaBandera } from '../../domain/simulacion';
 import styles from './AsignacionTareas.module.css';
 
 export function AsignacionTareas() {
@@ -36,11 +41,32 @@ export function AsignacionTareas() {
   const pedidos = ronda.ronda.pedidos;
   const total = pedidos.length;
   const [sinProductos, setSinProductos] = useState(false);
-  // Solo una ronda multipedido V2 identifica cada pedido con la letra de su contenedor.
-  const multipedido = total > 1 && simulacion.multipedidoEnHH;
+  /** Veces que ya falló la consulta de los pedidos de la ronda al aceptar (el reintento vuelve a consultar). */
+  const fallosRonda = useRef(0);
+  const v2 = esRondaV2(simulacion, total);
+  // "Contenedor {letra}" solo en una ronda V2 cuyos pedidos se pudieron consultar al mostrar la tarea.
+  const multipedido = v2 && simulacion.fallaConsultaRonda !== 'al-mostrar';
+  const ALERTA_ERROR = { kind: 'error' as const, title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' };
 
   const irAnterior = () => {
+    setEtapa('surtido');
     navigate('/surtido-anterior');
+  };
+
+  /**
+   * Una bandera que no se puede consultar se trata como inactiva (patrón de `2026-10-24-configuracion-aplicacion`):
+   * alerta global si la falla es de conexión, nada si no responde a tiempo; con la sesión vencida, al inicio de sesión.
+   * Devuelve true si ya enrutó.
+   */
+  const fallaDeBandera = (falla: FallaBandera | null) => {
+    if (!falla) return false;
+    if (falla === 'sesion') {
+      navigate('/login');
+      return true;
+    }
+    if (falla === 'conexion') mostrarToast(ALERTA_ERROR);
+    irAnterior();
+    return true;
   };
 
   /** Enrutamiento de "Aceptar" con las banderas de la sucursal. */
@@ -48,21 +74,28 @@ export function AsignacionTareas() {
     if (simulacion.sinProductos || total === 0) {
       return setSinProductos(true);
     }
+    if (fallaDeBandera(simulacion.fallaBanderaListado)) return;
     if (!simulacion.banderaListado) return irAnterior();
-    setEtapa('surtido');
-    if (total === 1) return navigate('/surtido');
-    const falla = simulacion.fallaBanderaMultipedido;
-    if (falla === 'sesion') {
-      return navigate('/login');
+    if (total === 1) {
+      setEtapa('surtido');
+      return navigate('/surtido');
     }
-    if (falla === 'conexion') {
-      mostrarToast({ kind: 'error', title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' });
-      return irAnterior();
-    }
-    if (falla === 'tiempo') {
-      return irAnterior();
-    }
+    if (fallaDeBandera(simulacion.fallaBanderaMultipedido)) return;
     if (!simulacion.multipedidoEnHH) return irAnterior();
+    // Dos o más pedidos con las dos banderas activas: se consultan los pedidos de la ronda, aunque sea una factura
+    // dividida (clarificación 65). Si falla o un pedido llega sin datos, la tarea no se toma.
+    const debeFallar =
+      (simulacion.fallaConsultaRonda === 'al-aceptar' || simulacion.fallaConsultaRonda === 'al-mostrar') && fallosRonda.current < 1;
+    if (debeFallar) {
+      fallosRonda.current += 1;
+      return mostrarToast(ALERTA_ERROR);
+    }
+    if (simulacion.pedidoSinDatos && pedidos.some((p) => p.id === simulacion.pedidoSinDatos)) {
+      return mostrarToast({ kind: 'error', title: 'Error', message: 'No se pudo cargar la información de la ronda.' });
+    }
+    // La división de factura, la paquetería, la sugerencia a embarques y los balanceos no son ronda V2.
+    if (!v2) return irAnterior();
+    // La tarea se toma al pulsar "Iniciar surtido" en el Detalle de la ronda.
     navigate('/ronda');
   };
 

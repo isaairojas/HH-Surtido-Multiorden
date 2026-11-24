@@ -41,7 +41,7 @@ import { Divider } from '@ds/components/atoms/Divider/Divider';
 import { Button } from '@ds/components/atoms/Button/Button';
 import { sonar } from '../../domain/sonidos';
 import { interpretarLectura } from '../../domain/lector';
-import { ordenDelListado } from '../../domain/simulacion';
+import { fallaUnaVez as fallaUnaVezSim, ordenDelListado } from '../../domain/simulacion';
 import { callar, debeLeer, resumenVoz } from '../../domain/voz';
 import cargandoIcono from '@assets/icons/loading-indicator.svg';
 import {
@@ -63,6 +63,7 @@ import {
   promocionesPendientes,
   proximaPartidaPara,
   rondaCompleta,
+  rondaFinalizable,
   rondaReducer,
   statusProducto,
   productoVista,
@@ -90,18 +91,24 @@ type Aviso =
   | { tipo: 'corporativo'; idx: number }
   | { tipo: 'cancelado'; idx: number }
   | { tipo: 'sin-pedidos' }
+  /** `idx` = pedido cuyo registro falló; `idx === pedidos.length` = falló el cierre de la ronda. */
   | { tipo: 'guardado-fallido'; idx: number }
+  | { tipo: 'retiro-fallido' }
   | { tipo: 'concluida' }
   | { tipo: 'salir' };
 
 const TEXTO_ERROR_CARGA = 'Lo sentimos, no ha sido posible cargar la información necesaria. Por favor, regresa al menú principal.';
 /** `taskAssortmentUnfinished` de `es.ts`: la falla de red al finalizar (único lugar con la alerta de conexión). */
 const TEXTO_ERROR_RED = 'Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo.';
-/**
- * Falla del servidor al finalizar: mismas opciones que la de red (escenario "Falla el guardado por un error del
- * servidor"). PROVISIONAL: la spec no cita el texto; falta que Producto lo confirme.
+/*
+ * Falla del servidor al finalizar: la HH de hoy muestra la misma "Tarea incompleta", con el mismo texto y las mismas
+ * opciones que ante la falla de red (escenario "Falla el guardado por un error del servidor", "como hoy"; `es.ts` solo
+ * tiene `taskAssortmentUnfinished`).
  */
-const TEXTO_ERROR_SERVIDOR = 'Ocurrió un error en el servidor al finalizar el surtido. Por favor, vuelve a intentarlo.';
+/** Aviso de la falla del retiro o de su registro (Sacar el pedido de la ronda, clarificación 46). */
+const TEXTO_RETIRO_FALLIDO = 'El pedido corporativo no pudo ser retirado de la ronda por un error en el sistema. Vuelva a intentar.';
+/** "Ronda sin pedidos" (La ronda se queda sin pedidos, clarificación 34 del cierre). */
+const TEXTO_RONDA_SIN_PEDIDOS = 'La ronda ya no tiene pedidos por surtir y su tarea se canceló.';
 /** Alerta global de error de la HH (la misma de la falla de conexión al consultar banderas). */
 const ALERTA_ERROR = { kind: 'error' as const, title: 'Error de conexión', message: 'Ocurrió un error de conexión con el servidor.' };
 
@@ -149,6 +156,13 @@ export function SurtidoRonda() {
   const finalizarOfrecido = useRef(false);
   /** Veces que ya falló el guardado de cada pedido (`simulacion.vecesFallaGuardado` las limita). */
   const fallosGuardado = useRef<Map<string, number>>(new Map());
+  /** Fallas de una sola vez del servidor simulado: el reintento ya responde. */
+  const fallosUnaVez = useRef<Set<string>>(new Set());
+  const fallaUnaVez = (clave: string) => {
+    if (fallosUnaVez.current.has(clave)) return false;
+    fallosUnaVez.current.add(clave);
+    return true;
+  };
   /** Evita abrir dos veces el listado (StrictMode monta los efectos dos veces). */
   const abriendo = useRef(false);
   /**
@@ -228,10 +242,19 @@ export function SurtidoRonda() {
    */
   const intentarFinalizar = (manual: boolean) => {
     setMenu(false);
-    // Antes que nada, un pedido cancelado (SDD 2026-11-05-multipedido-surtido-listado-cierre · Pedido cancelado
-    // durante el surtido): mientras se surte, el listado no se entera.
-    const cancelado = r.pedidos.findIndex((p) => simulacion.cancelados.includes(p.id));
-    if (cancelado >= 0) return setAviso({ tipo: 'cancelado', idx: cancelado });
+    // Antes que nada, con dos o más pedidos, los cancelados (SDD 2026-11-05-multipedido-surtido-listado-cierre · Pedido
+    // cancelado durante el surtido): mientras se surte, el listado no se entera. Si la comprobación falla, alerta de
+    // error de la app y no se finaliza.
+    if (r.pedidos.length >= 2) {
+      if (simulacion.fallaComprobacionCancelados && fallaUnaVez('cancelados')) {
+        sonar('error');
+        return mostrarToast(ALERTA_ERROR);
+      }
+      const cancelado = r.pedidos.findIndex((p) => simulacion.cancelados.includes(p.id));
+      if (cancelado >= 0) return setAviso({ tipo: 'cancelado', idx: cancelado });
+      // Todas las partidas negadas: la ronda se queda sin pedidos por surtir (La ronda se queda sin pedidos).
+      if (r.pedidos.every((p) => p.partidas.every((x) => x.motivoNegacion !== null))) return setAviso({ tipo: 'sin-pedidos' });
+    }
     const corp = corporativoIncompleto(r);
     if (corp >= 0) return setAviso({ tipo: 'corporativo', idx: corp });
     if (manual && hayCodigosSinSurtir(r)) return setAviso({ tipo: 'sin-surtir' });
@@ -279,6 +302,11 @@ export function SurtidoRonda() {
         return setAviso({ tipo: 'guardado-fallido', idx: i });
       }
     }
+    // Todos los pedidos registrados: la ronda se guarda una sola vez. Si ese cierre falla, "Reintentar" solo vuelve
+    // a cerrar la ronda, sin registrar otra vez los pedidos (Bloqueos y fallas al finalizar · "Falla el cierre de la ronda").
+    if (simulacion.fallaCierreRonda && fallaUnaVez('cierre')) {
+      return setAviso({ tipo: 'guardado-fallido', idx: r.pedidos.length });
+    }
     cargarSiguienteTarea();
     sonar('ok');
     mostrarToast({ kind: 'success', title: 'Surtido finalizado', message: '¡Se completó la ronda de surtido exitosamente!' });
@@ -290,7 +318,15 @@ export function SurtidoRonda() {
    * queda pendiente, como hoy (SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al
    * finalizar, clarificación 12).
    */
-  const cancelarGuardado = () => cerrarListado('/tareas', true);
+  const cancelarGuardado = () => {
+    // Con dos o más pedidos, "Cancelar" vuelve al inicio solo si la desvinculación responde: si falla, sigue en
+    // "Tarea incompleta" para que ninguna ronda quede a medio registrar. Con un solo pedido, como hoy.
+    if (r.pedidos.length >= 2 && simulacion.fallaDesvincular) {
+      sonar('error');
+      return mostrarToast(ALERTA_ERROR);
+    }
+    cerrarListado('/tareas', true);
+  };
 
   /**
    * Sacar el corporativo: solo sale ese documento; los demás conservan lo surtido y su letra, y no entra
@@ -299,21 +335,36 @@ export function SurtidoRonda() {
    */
   const sacarCorporativo = (idx: number) => {
     const p = r.pedidos[idx];
-    // Falla el retiro: alerta global de error y el pedido sigue en la ronda y en el listado.
-    if (simulacion.fallaRetiro) {
-      setAviso(null);
+    // Falla el retiro o su registro: aviso con la única opción de cerrar; el pedido sigue en la ronda y en el listado
+    // y se puede volver a intentar (clarificación 46).
+    if (simulacion.fallaRetiro && fallaUnaVezSim(`retiro-${p.id}`)) {
       sonar('error');
-      return mostrarToast(ALERTA_ERROR);
+      return setAviso({ tipo: 'retiro-fallido' });
     }
-    quitarDeLaRonda(p);
     sonar('ok');
     mostrarToast({ kind: 'success', title: 'Pedido retirado de la ronda', message: 'Aparta la mercancía ya surtida y repórtalo para su validación.' });
+    // El único pedido (desde el inicio o el último que queda) se retira como hoy: se regresa, sin una ventana
+    // principal vacía (Sacar el pedido de la ronda · "Retirar el único pedido"). Sacar corporativos no deja la ronda
+    // vacía ni la cancela (La ronda se queda sin pedidos · "Se sacan corporativos hasta quedar uno").
+    if (r.pedidos.length === 1) {
+      setListadoAbierto(false);
+      setAviso(null);
+      cargarSiguienteTarea();
+      return navigate('/tareas');
+    }
+    quitarDeLaRonda(p);
   };
 
   /** Pedido cancelado aceptado: sale de la ronda y se regresa a la ventana principal para volver a confirmar. */
   const aceptarCancelado = (idx: number) => {
-    quitarDeLaRonda(r.pedidos[idx]);
+    const p = r.pedidos[idx];
+    quitarDeLaRonda(p);
     sonar('ok');
+    // Los cancelados se avisan seguidos en el mismo intento, sin volver a la ventana entre uno y otro. El índice es el
+    // de la ronda ya sin este pedido.
+    const restantes = r.pedidos.filter((x) => x.id !== p.id);
+    const siguiente = restantes.findIndex((x) => simulacion.cancelados.includes(x.id));
+    if (siguiente >= 0) setAviso({ tipo: 'cancelado', idx: siguiente });
   };
 
   /**
@@ -323,7 +374,11 @@ export function SurtidoRonda() {
   const quitarDeLaRonda = (p: Pedido) => {
     dispatch({ type: 'retirarPedido', pedidoId: p.id });
     pedidosAvisados.delete(p.id);
+    // Regresa a la ventana principal y el usuario vuelve a elegir "Finalizar surtido": no se ofrece sola
+    // (Continuación tras un aviso al finalizar).
+    finalizarOfrecido.current = true;
     if (ultimoEscaneo?.pedidoId === p.id) setUltimoEscaneo(null);
+    // Solo los cancelados pueden dejarla vacía: sacar corporativos no (ver `sacarCorporativo`).
     setAviso(r.pedidos.length - 1 === 0 ? { tipo: 'sin-pedidos' } : null);
   };
 
@@ -335,11 +390,13 @@ export function SurtidoRonda() {
 
   /** Salir: desvincula todos los contenedores o ninguno, y descarta lo registrado, negaciones incluidas. */
   const salir = () => {
+    // Todo o nada: si falla la desvinculación de cualquier pedido (o vence el tiempo de espera), permanece en el
+    // listado y ninguno queda desvinculado. Un cancelado ya avisado también se desvincula, aunque no se cuente.
     const falla = simulacion.fallaDesvincular;
     if (falla) {
       setAviso(null);
       sonar('error');
-      return mostrarToast({ kind: 'error', title: 'No fue posible salir', message: 'No se pudo desvincular el contenedor. Intenta de nuevo.' });
+      return mostrarToast(ALERTA_ERROR);
     }
     cerrarListado('/tareas', true);
   };
@@ -349,13 +406,18 @@ export function SurtidoRonda() {
     // Mientras corre el flujo de promoción o hay otro aviso, el cierre espera.
     if (promo || aviso) return;
     if (rondaCompleta(r) && r.pedidos.length > 0) {
-      if (!finalizarOfrecido.current) {
+      // La finalización automática solo se ofrece sin promociones AxB pendientes, como hoy: con una promoción
+      // incompleta, el usuario elige "Finalizar surtido" (Finalizar el surtido del pedido).
+      if (!finalizarOfrecido.current && rondaFinalizable(r)) {
         finalizarOfrecido.current = true;
         intentarFinalizar(false);
       }
       return;
     }
-    const cerrado = r.pedidos.find((p) => pedidoCompleto(p) && !pedidosAvisados.has(p.id));
+    // Si la ronda deja de estar completa (una corrección), se volverá a ofrecer al completarla.
+    finalizarOfrecido.current = false;
+    // Con un solo pedido no hay aviso de pedido completado (Alcance de la ronda de un solo pedido).
+    const cerrado = r.pedidos.length >= 2 ? r.pedidos.find((p) => pedidoCompleto(p) && !pedidosAvisados.has(p.id)) : undefined;
     if (cerrado) {
       pedidosAvisados.add(cerrado.id);
       setTransicion(cerrado);
@@ -378,7 +440,7 @@ export function SurtidoRonda() {
   /** Aplica la cantidad al pedido con menor orden que todavía necesita el código (FR-010). */
   const surtir = (codigo: string, cantidad: number, etiqueta?: string) => {
     const ev = evaluarSurtido(r, codigo, cantidad);
-    if (!ev.ok) return rechazar(ev.rechazo);
+    if (!ev.ok) return rechazar(ev.rechazo === 'fuera-de-ronda' && !multipedido ? 'fuera-del-pedido' : ev.rechazo);
     sonar('ok');
     // El pedido que recibe las piezas es el destino antes de aplicar el surtido (FR-010).
     const destino = proximaPartidaPara(r, codigo);
@@ -409,6 +471,18 @@ export function SurtidoRonda() {
       mostrarToast({ kind: 'error', title: 'Código inválido', message: 'El código escaneado no pertenece a los códigos con promoción.' });
       return setPromo({ paso: 'pendiente', pendiente: promo.pendiente });
     }
+    // "Eliminar productos" registra un pedido a la vez y es todo o nada: si falla el de cualquiera, la promoción no queda
+    // negada en ninguno y se sigue en "Finalizar surtido" para reintentar (clarificación 53, D-01).
+    const falla = simulacion.fallaEliminarPromocion;
+    if (falla && promo.pendiente.pedidos.some((p) => p.pedidoId === falla) && fallaUnaVez('eliminar-promocion')) {
+      sonar('error');
+      mostrarToast({
+        kind: 'error',
+        title: 'No es posible negar el producto',
+        message: 'Ocurrió un error al negar el producto, por favor intenta de nuevo.',
+      });
+      return setPromo({ paso: 'pendiente', pendiente: promo.pendiente });
+    }
     sonar('ok');
     dispatch({ type: 'negarPromocion', promocionId: promo.pendiente.promocion.id });
     setPromo({ paso: 'negada', retirada: promo.pendiente });
@@ -428,8 +502,9 @@ export function SurtidoRonda() {
       etiquetaUnica: simulacion.etiquetaUnica,
       etiquetasMasAntiguas: simulacion.etiquetasMasAntiguas,
     });
-    if (res.tipo === 'invalida') return sonar('error');
-    if (res.tipo === 'rechazo') return rechazar(res.rechazo);
+    // Lectura ilegible: "Código inválido" con el texto de hoy. Con un solo pedido, el código ajeno lleva el texto de hoy.
+    if (res.tipo === 'invalida') return rechazar('lectura-invalida');
+    if (res.tipo === 'rechazo') return rechazar(res.rechazo === 'fuera-de-ronda' && !multipedido ? 'fuera-del-pedido' : res.rechazo);
     // Etiqueta única ya surtida: alerta "Advertencia", sin voz y sin sumar a ningún pedido. En la ronda no se repite
     // en ningún pedido; con un solo pedido, el texto de hoy (`tagAlreadyScannedInOrder`).
     if (res.tipo === 'etiqueta-repetida') {
@@ -458,7 +533,9 @@ export function SurtidoRonda() {
     : 0;
 
   const siguientePedido = transicion
-    ? (r.pedidos.slice(r.pedidos.indexOf(transicion) + 1).find((p) => !pedidoCompleto(p)) ?? null)
+    ? (r.pedidos.slice(r.pedidos.indexOf(transicion) + 1).find((p) => !pedidoCompleto(p)) ??
+      r.pedidos.find((p) => p !== transicion && !pedidoCompleto(p)) ??
+      null)
     : null;
 
   const hayOverlay =
@@ -478,8 +555,7 @@ export function SurtidoRonda() {
         {!cargando && aviso?.tipo !== 'error-carga' && (
           <>
             <OrderProgress
-              titulo="Avance de la ronda"
-              etiquetas={false}
+              {...(multipedido ? { titulo: 'Avance de la ronda', etiquetas: false } : { pedido: r.pedidos[0]?.id })}
               completado={c.completado}
               negado={c.negado}
               parcial={c.parcial}
@@ -588,7 +664,7 @@ export function SurtidoRonda() {
         <PedidoCompletadoModal
           pedidoCompletado={transicion.id}
           siguientePedido={siguientePedido?.id ?? null}
-          siguienteCliente={siguientePedido?.cliente.nombre ?? null}
+          siguienteCliente={siguientePedido ? `${siguientePedido.cliente.id} · ${siguientePedido.cliente.nombre}` : null}
           letraCompletado={letraDe(r, r.pedidos.indexOf(transicion))}
           letraSiguiente={siguientePedido ? letraDe(r, r.pedidos.indexOf(siguientePedido)) : null}
           onContinuar={cerrarOverlay}
@@ -602,7 +678,6 @@ export function SurtidoRonda() {
           multipedido={multipedido}
           onCerrar={() => setAviso(null)}
           onGuardar={() => guardar()}
-          errorServidor={simulacion.tipoFallaGuardado === 'servidor'}
           onReintentar={(idx) => guardar(idx)}
           onCancelarGuardado={cancelarGuardado}
           onSacar={sacarCorporativo}
@@ -625,7 +700,6 @@ function AvisoListado({
   aviso,
   pedidos,
   multipedido,
-  errorServidor,
   onCerrar,
   onGuardar,
   onReintentar,
@@ -640,7 +714,6 @@ function AvisoListado({
   aviso: Aviso;
   pedidos: Pedido[];
   multipedido: boolean;
-  errorServidor: boolean;
   onCerrar: () => void;
   onGuardar: () => void;
   onReintentar: (idx: number) => void;
@@ -720,7 +793,13 @@ function AvisoListado({
       );
     }
     case 'guardado-fallido': {
-      const p = pedidos[aviso.idx];
+      // Con dos o más pedidos el texto nombra qué falló: el registro de un pedido o el cierre de la ronda. Con uno
+      // solo, el de hoy.
+      const prefijo = !multipedido
+        ? ''
+        : aviso.idx >= pedidos.length
+          ? 'No se pudo cerrar la ronda. '
+          : `No se pudo guardar el pedido ${pedidos[aviso.idx]?.id}. `;
       return (
         <AvisoModal
           titulo="Tarea incompleta"
@@ -730,16 +809,10 @@ function AvisoListado({
             { label: 'Reintentar', onClick: () => onReintentar(aviso.idx) },
           ]}
         >
-          <TextoAviso>{errorServidor ? TEXTO_ERROR_SERVIDOR : TEXTO_ERROR_RED}</TextoAviso>
-          {/* Nombra el pedido que falló. No lista los ya registrados: al cancelar no se conserva ninguno. */}
-          {multipedido && (
-            <DatosAviso
-              filas={[
-                { etiqueta: 'Pedido sin registrar', valor: p?.id },
-                { etiqueta: 'Contenedor', valor: letra(aviso.idx) },
-              ]}
-            />
-          )}
+          <TextoAviso>
+            {prefijo}
+            {TEXTO_ERROR_RED}
+          </TextoAviso>
         </AvisoModal>
       );
     }
@@ -755,10 +828,15 @@ function AvisoListado({
       );
     }
     case 'sin-pedidos':
-      // PROVISIONAL: la spec pide avisar "que la ronda ya no tiene pedidos" sin citar el texto.
       return (
         <AvisoModal titulo="Ronda sin pedidos" tipo="error" botones={[{ label: 'Aceptar', onClick: onSinPedidos }]}>
-          <TextoAviso>La ronda ya no tiene pedidos, así que la tarea se canceló. Regresa a la asignación de tareas.</TextoAviso>
+          <TextoAviso>{TEXTO_RONDA_SIN_PEDIDOS}</TextoAviso>
+        </AvisoModal>
+      );
+    case 'retiro-fallido':
+      return (
+        <AvisoModal titulo="Error" tipo="error" botones={[{ label: 'Cerrar', variante: 'error', icono: 'cross', onClick: onCerrar }]}>
+          <TextoAviso>{TEXTO_RETIRO_FALLIDO}</TextoAviso>
         </AvisoModal>
       );
     case 'concluida':

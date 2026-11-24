@@ -136,3 +136,14 @@
   color: var(--color-active-text);
 }
 
+
+.tagGrupo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.separador {
+  margin: 0 2px;
+  color: var(--color-gris-500, #888);
+  white-space: pre;
+}

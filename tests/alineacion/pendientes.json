@@ -1,5 +1,48 @@
 {
   "nota": "Lo que falta para que la demo cubra la spec. Solo baja: la prueba de alineación falla si algo de aquí ya está resuelto.",
-  "faltan": [],
+  "faltan": [
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Ronda sin pedidos",
+      "escenario": "Todos los pedidos retirados",
+      "motivo": "Cierre actual (V1 o tarea de un pedido) del servicio assortment-task: la respuesta \"Se cancela la ronda por no tener pedidos para continuar.\" no la muestra la HH del listado V2 ni la demo."
+    },
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Ronda sin pedidos",
+      "escenario": "Cierre actual sin pedidos",
+      "motivo": "Cierre actual del servicio (surtido V1 o tarea de un solo pedido): sin cambio de comportamiento y sin nada nuevo que ver en la HH."
+    },
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Aviso de surtido finalizado",
+      "escenario": "Sucursal sin bandera",
+      "motivo": "Aviso a Torre de Control: lo hace el servidor al cerrar la ronda y no se ve en la HH."
+    },
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Aviso de surtido finalizado",
+      "escenario": "Torre de Control no disponible",
+      "motivo": "Aviso a Torre de Control: el servidor cierra la ronda aunque Torre de Control no responda; en la HH solo se ve el cierre normal (caso \"Finalizar una ronda de 3 pedidos\")."
+    },
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Aviso de surtido finalizado",
+      "escenario": "Ronda cerrada con surtido",
+      "motivo": "Aviso a Torre de Control del surtido finalizado: es del servidor y no se ve en la HH."
+    },
+    {
+      "cambio": "cierre",
+      "capacidad": "servicio/cierre-ronda-surtido",
+      "requisito": "Aviso de surtido finalizado",
+      "escenario": "Ronda cancelada sin pedidos",
+      "motivo": "Que Torre de Control no reciba aviso es del servidor; en la HH se ve \"Ronda sin pedidos\" (caso \"Ronda multipedido V2 con todos los pedidos cancelados\")."
+    }
+  ],
   "desalineados": []
 }

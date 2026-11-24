@@ -1,6 +1,7 @@
 /**
- * Simulador del armado de la ronda multipedido V2 (SDD 2026-10-26-multipedido-armado-ronda) para validar en pantalla cada
- * escenario de `elegibilidad-ronda-multipedido` y `catalogo-bandera-sucursal`.
+ * Simulador del armado de la ronda (SDD 2026-10-26-multipedido-armado-ronda, con sus deltas del servicio, y
+ * 2026-11-20-multipedido-configuracion-armado) para validar en pantalla cada escenario de `elegibilidad-ronda-multipedido`,
+ * `catalogo-bandera-sucursal`, los deltas de `recuperar-ordenes-surtir` y `configuracion-ronda-multipedido`.
  *
  * Es una página de back-office, no una pantalla de la HH: el armado lo resuelve el servidor y la HH recibe
  * la ronda ya armada. Por eso ocupa todo el ancho y se pinta por encima del marco de 430 px.
@@ -12,8 +13,11 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  armarCola,
   armarRonda,
+  banderasReportadas,
   NOMBRES_BANDERAS,
+  revisarAlta,
   type ConfigSucursal,
   type EvaluacionCandidato,
   type ModoArmado,
@@ -25,15 +29,34 @@ import {
 import { PRESETS_ARMADO, presetArmado, verificarPreset, type PresetArmado } from '../../domain/armadoEscenarios';
 import styles from './ArmadoRonda.module.css';
 
-const CAPACIDADES: { id: PresetArmado['capacidad']; titulo: string }[] = [
-  { id: 'elegibilidad-ronda-multipedido', titulo: 'Elegibilidad de la ronda' },
-  { id: 'catalogo-bandera-sucursal', titulo: 'Catálogo de banderas y parámetros' },
+const CAPACIDADES: { id: PresetArmado['capacidad']; titulo: string; cambio: string }[] = [
+  { id: 'elegibilidad-ronda-multipedido', titulo: 'Elegibilidad de la ronda', cambio: '2026-10-26-multipedido-armado-ronda' },
+  { id: 'catalogo-bandera-sucursal', titulo: 'Catálogo de banderas', cambio: '2026-10-26-multipedido-armado-ronda' },
+  {
+    id: 'servicio/recuperacion-ordenes-por-surtir-por-rol',
+    titulo: 'Servicio · Tipo de ronda y elegibilidad por vía',
+    cambio: '2026-10-26-multipedido-armado-ronda',
+  },
+  {
+    id: 'servicio/traspasos-y-prioridad-de-peticiones',
+    titulo: 'Servicio · Ronda por pedido y traspasos',
+    cambio: '2026-10-26-multipedido-armado-ronda',
+  },
+  {
+    id: 'servicio/presupuesto-de-tiempo-de-surtido',
+    titulo: 'Servicio · Presupuesto de tiempo (sin V2)',
+    cambio: '2026-10-26-multipedido-armado-ronda',
+  },
+  { id: 'configuracion-ronda-multipedido', titulo: 'Configuración por sucursal', cambio: '2026-11-20-multipedido-configuracion-armado' },
 ];
 
 const MODOS: Record<ModoArmado, string> = {
   actual: 'Armado actual',
-  unificado: 'Surtido unificado',
   multipedido: 'Multipedido V2',
+  paqueteria: 'Ronda de paquetería',
+  embarque: 'Sugerencia a embarques',
+  almacenista: 'Almacenista (rol 2)',
+  'sin-rondas': 'Sin rondas',
 };
 
 const RUTAS: Record<RutaArmado, string> = {
@@ -42,8 +65,25 @@ const RUTAS: Record<RutaArmado, string> = {
 };
 
 const letra = (i: number) => String.fromCharCode(65 + i);
-const servicio = (p: PedidoCola) => (p.servicio === 'local' ? 'Local' : 'Foráneo');
-const tipo = (p: PedidoCola) => (p.tipo === 'cliente' ? 'Cliente' : p.tipo === 'traspaso' ? 'Traspaso' : 'Balanceo');
+const servicio = (p: PedidoCola) => (p.servicio === 'local' ? 'Local' : p.servicio === 'foraneo' ? 'Foráneo' : 'Sin definir');
+const tipo = (p: PedidoCola) =>
+  p.tipo === 'cliente' ? (p.corporativo ? 'Corporativo' : 'Cliente') : p.tipo === 'traspaso' ? 'Traspaso' : p.tipo === 'balanceo' ? 'Balanceo' : 'Otro';
+const VIAS = { local: 'Local activa', liberado: 'Liberado', automatico: 'Automático' } as const;
+/** Lo demás que el escenario fija del pedido, en una sola celda. */
+function marcas(p: PedidoCola): string {
+  const m: string[] = [];
+  if (p.vencido) m.push('vencido');
+  if (p.cancelado) m.push('cancelado');
+  if (p.codigos.length === 0) m.push('0 partidas');
+  if (p.faltaDato) m.push(`sin ${p.faltaDato}`);
+  if (p.congelado) m.push('congelado por existencia');
+  if (p.sinZona) m.push('sin zona');
+  if (p.surtido) m.push('ya surtido');
+  if (p.enviadoHH) m.push('ya enviado a la HH');
+  if (p.sugeridoEmbarque) m.push('se puede sumar a un embarque');
+  if (p.reparto) m.push(`reparto ${p.reparto.slice(11)}`);
+  return m.join(' · ') || '—';
+}
 
 /** Papel de cada pedido de la cola en el resultado. */
 function papel(p: PedidoCola, r: ResultadoArmado): { texto: string; clase: string } {
@@ -76,7 +116,8 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
           <span className={styles.etiqueta}>Back-end · simulador</span>
           <h1 className={styles.titulo}>Armado de ronda multipedido V2</h1>
           <p className={styles.subtitulo}>
-            SDD <code>2026-10-26-multipedido-armado-ronda</code>. {coinciden} de {verificables} escenarios coinciden con el spec.
+            SDD <code>2026-10-26-multipedido-armado-ronda</code> y <code>2026-11-20-multipedido-configuracion-armado</code>.{' '}
+            {coinciden} de {verificables} escenarios coinciden con el spec.
           </p>
           <button type="button" className={styles.volver} onClick={() => navigate('/tareas')}>
             ← Volver a la HH
@@ -88,7 +129,7 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
           const requisitos = [...new Set(presets.map((p) => p.requisito))];
           return (
             <section key={cap.id} className={styles.capacidad}>
-              <h2 className={styles.capacidadTitulo}>
+              <h2 className={styles.capacidadTitulo} title={cap.cambio}>
                 {cap.titulo} <span>({presets.length})</span>
               </h2>
               {requisitos.map((req) => (
@@ -129,7 +170,7 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
       <main className={styles.principal}>
         <header className={styles.encabezado}>
           <span className={styles.requisitoChip}>
-            {preset.capacidad} · {preset.requisito}
+            {CAPACIDADES.find((c) => c.id === preset.capacidad)?.cambio} · {preset.capacidad} · {preset.requisito}
           </span>
           <h2 className={styles.escenarioTitulo}>Escenario: {preset.escenario}</h2>
           <p className={styles.descripcion}>{preset.descripcion}</p>
@@ -164,7 +205,7 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
         ) : (
           resultado && (
             <>
-              <Resultado cfg={preset.config} r={resultado} />
+              <Resultado cfg={preset.config} r={resultado} cola={preset.cola} rondas={!!preset.comprobar.rondas} />
               {preset.otraSucursal && (
                 <>
                   <h2 className={styles.escenarioTitulo}>
@@ -173,6 +214,8 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
                   <Resultado
                     cfg={preset.otraSucursal.config}
                     r={armarRonda(preset.cola, preset.otraSucursal.config)}
+                    cola={preset.cola}
+                    rondas={!!preset.comprobar.rondas}
                   />
                 </>
               )}
@@ -184,36 +227,65 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
   );
 }
 
-function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
+function Resultado({ cfg, r, cola, rondas }: { cfg: ConfigSucursal; r: ResultadoArmado; cola: PedidoCola[]; rondas: boolean }) {
+  const reportadas = banderasReportadas(cfg);
+  const alta = revisarAlta(cfg);
+  const deLaCola = rondas ? armarCola(cola, cfg) : [];
   return (
     <>
       <section className={styles.tarjeta}>
         <h3 className={styles.seccionTitulo}>Configuración de la sucursal{cfg.sucursal ? ` ${cfg.sucursal}` : ''}</h3>
         <p className={styles.ayuda}>
-          Configuración de ejemplo para reproducir el escenario. En la sucursal, las banderas, los parámetros y la franja
-          viven donde ya se configuran; la demo no fija sus valores. Armado {RUTAS[r.ruta]}: el multipedido V2 solo aplica
-          con <code>RondaOrdenesSurtidoAPI</code> activa.
+          Configuración de ejemplo para reproducir el escenario. Los cambios los solicita el jefe de sucursal o
+          administración al líder técnico y los aplica el DBA en la base, sin desplegar; se reflejan en la siguiente ronda
+          de esa sucursal. Armado {RUTAS[r.ruta]}: el multipedido V2 está {r.v2 ? 'activo' : 'inactivo'} (exige{' '}
+          <code>Bandera_MultipedidoEnHH</code> y <code>BanderaListadoDeProductosEnHH</code>, en sucursales con{' '}
+          <code>RondaOrdenesSurtidoAPI</code>). <code>Bandera_RevisionPedidoEnHH</code> no participa en el armado.
         </p>
         <div className={styles.chips}>
-          {NOMBRES_BANDERAS.map((b) => (
-            <span key={b} className={`${styles.chip} ${cfg[b] ? styles.chipActiva : styles.chipInactiva}`}>
-              <b>{cfg[b] ? 'Activa' : 'Inactiva'}</b> {b}
-            </span>
-          ))}
+          {NOMBRES_BANDERAS.map((b) => {
+            const sinAsignar = cfg.sinAsignar?.includes(b);
+            return (
+              <span key={b} className={`${styles.chip} ${cfg[b] && !sinAsignar ? styles.chipActiva : styles.chipInactiva}`}>
+                <b>{sinAsignar ? 'Sin asignar' : cfg[b] ? 'Activa' : 'Inactiva'}</b> {b}
+              </span>
+            );
+          })}
         </div>
         <div className={styles.parametros}>
-          <Parametro nombre="Máximo de pedidos por ronda" valor={r.maxPedidos} inicial={cfg.maxPedidos === undefined} />
+          <Parametro
+            nombre="Máximo de pedidos por ronda"
+            valor={r.maxPedidos ?? 'sin configurar'}
+            nota={r.maxPedidos === null ? 'en 0 o sin configurar: no se evalúan candidatos' : r.maxPedidos === 3 ? 'valor del alta' : undefined}
+          />
           <Parametro
             nombre="Tope de partidas por ronda"
-            valor={r.maxPartidas}
-            inicial={cfg.maxPartidas === undefined}
-            nota={cfg.Bandera_MultipedidoTopePartidas ? undefined : 'no aplica: bandera inactiva'}
+            valor={r.maxPartidas ?? 'sin configurar'}
+            nota={
+              !cfg.Bandera_MultipedidoTopePartidas
+                ? 'no cuenta: bandera inactiva'
+                : r.maxPartidas === null
+                  ? 'en 0 o sin configurar: no se evalúan candidatos'
+                  : r.maxPartidas === 15
+                    ? 'valor del alta'
+                    : undefined
+            }
           />
           <Parametro
             nombre="Tiempo máximo de la franja"
             valor={`${cfg.minutosFranja} min`}
             nota="si un candidato cumple todo y se pasa, la franja de la ronda se amplía"
           />
+          {(cfg.rol ?? 1) === 2 && <Parametro nombre="Quien pide la ronda" valor="Almacenista (rol 2)" />}
+          {cfg.ahora && <Parametro nombre="Hora actual" valor={cfg.ahora.slice(11)} nota="para el tiempo disponible al reparto" />}
+          {cfg.paqueteria && <Parametro nombre="Paquetería" valor="hora límite alcanzada" />}
+          {cfg.porcentajeForaneo !== undefined && (
+            <Parametro nombre="Porcentaje de documentos foráneos" valor={`${cfg.porcentajeForaneo * 100} %`} nota="reparto del presupuesto sin V2" />
+          )}
+          {cfg.modoMasivoVencidos && <Parametro nombre="Atención de vencidos" valor="modo masivo" />}
+          {cfg.sinConfiguracionOrdenamiento && (
+            <Parametro nombre="Configuración de ordenamiento" valor="no registrada" nota="configuración previa obligatoria" />
+          )}
           {cfg.momentoVentana && (
             <Parametro
               nombre="Entrada a la ventana de tareas"
@@ -244,11 +316,13 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
                 <th>Códigos</th>
                 <th>Servicio</th>
                 <th>Tipo</th>
+                <th>Vía</th>
                 <th>Dirección</th>
                 <th>Zona</th>
                 <th>Retenido</th>
                 <th>División</th>
                 <th>Min</th>
+                <th>Otros datos</th>
               </tr>
             </thead>
             <tbody>
@@ -270,11 +344,13 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
                     </td>
                     <td>{servicio(p)}</td>
                     <td>{tipo(p)}</td>
+                    <td>{VIAS[p.via ?? 'local']}</td>
                     <td className={styles.direccion}>{p.direccion}</td>
                     <td>{p.zona ?? '—'}</td>
-                    <td>{p.retenido ? 'Sí' : 'No'}</td>
+                    <td>{p.retenido ? (p.retencion === 'automatica' ? 'Sí (crédito)' : 'Sí') : 'No'}</td>
                     <td>{p.division ? `${p.division.id} · parte ${p.division.parte}` : '—'}</td>
                     <td className={styles.num}>{p.minutos}</td>
+                    <td>{marcas(p)}</td>
                   </tr>
                 );
               })}
@@ -301,7 +377,16 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
           </span>
         </h3>
         <p className={styles.texto}>{r.explicacionModo}</p>
-        {r.ancla && (
+        <p className={styles.texto}>
+          Respuesta del servicio: <b>"{r.mensaje}"</b>
+        </p>
+        {r.presupuesto && (
+          <p className={styles.texto}>
+            Presupuesto: <b>{r.presupuesto.foraneo}</b> min foráneos y <b>{r.presupuesto.local}</b> locales; al terminar quedan{' '}
+            <b>{r.presupuesto.foraneoRestante}</b> foráneos y <b>{r.presupuesto.localRestante}</b> locales.
+          </p>
+        )}
+        {r.ancla && r.modo === 'multipedido' && (
           <p className={styles.texto}>
             Ancla: <b>{r.ancla.folio}</b>, el primero de la cola.
           </p>
@@ -321,7 +406,7 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
       </section>
 
       <section className={styles.tarjeta}>
-        <h3 className={styles.seccionTitulo}>Ronda final</h3>
+        <h3 className={styles.seccionTitulo}>Ronda final{r.ronda.length === 0 ? ': vacía' : ''}</h3>
         <div className={styles.ronda}>
           {r.ronda.map((p, i) => (
             <span key={p.folio} className={styles.contenedor}>
@@ -331,11 +416,11 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
           ))}
         </div>
         <div className={styles.totales}>
-          <Total nombre="Pedidos" valor={r.ronda.length} limite={r.maxPedidos} />
+          <Total nombre="Pedidos" valor={r.ronda.length} limite={r.modo === 'multipedido' ? (r.maxPedidos ?? undefined) : undefined} />
           <Total
             nombre="Partidas"
             valor={r.totalPartidas}
-            limite={cfg.Bandera_MultipedidoTopePartidas ? r.maxPartidas : undefined}
+            limite={r.modo === 'multipedido' && cfg.Bandera_MultipedidoTopePartidas ? (r.maxPartidas ?? undefined) : undefined}
           />
           <Total
             nombre="Minutos"
@@ -351,6 +436,37 @@ function Resultado({ cfg, r }: { cfg: ConfigSucursal; r: ResultadoArmado }) {
             ))}
           </ul>
         )}
+      </section>
+
+      {rondas && (
+        <section className={styles.tarjeta}>
+          <h3 className={styles.seccionTitulo}>Rondas que salen de la cola, una tras otra</h3>
+          <p className={styles.ayuda}>Se arma la ronda del primero, se quitan sus pedidos y el armado sigue con el siguiente.</p>
+          <ol className={styles.notas}>
+            {deLaCola.map((x, i) => (
+              <li key={i}>
+                Ronda {i + 1}: <b>{x.ronda.map((p) => p.folio).join(', ')}</b>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <section className={styles.tarjeta}>
+        <h3 className={styles.seccionTitulo}>Catálogo y alta de la sucursal</h3>
+        <p className={styles.texto}>
+          Banderas del multipedido V2 que reporta habilitadas: <b>{reportadas.length ? reportadas.join(', ') : 'ninguna'}</b>.
+        </p>
+        <p className={styles.texto}>
+          Revisión del alta (prueba de aceptación):{' '}
+          {alta.completa ? (
+            <b>completa</b>
+          ) : (
+            <>
+              <b>incompleta</b>; falta {alta.faltan.join(', ')}.
+            </>
+          )}
+        </p>
       </section>
     </>
   );

@@ -14,7 +14,8 @@
  * | 2010000 | Familia Foco, pasillo 4                                                           | —        | —        | 1        |
  * | 9999999 | Fuera de la ronda (no está en ningún pedido)                                      | —        | —        | —        |
  *
- * 1001 y 1003 son del mismo cliente ("Mismo cliente" en el Detalle de la ronda); 1002 es de otro. La ronda cumple
+ * 1001 y 1003 son del cliente 48213 "AUTOPARTES DEL VALLE SA DE CV" ("Mismo cliente" en el Detalle de la ronda); 1002
+ * es del 51077 "REFACCIONARIA LA ÚNICA". La ronda es la G-500. La ronda cumple
  * las reglas de armado: los tres pedidos comparten códigos y suman 14 partidas, debajo del tope inicial de 15.
  *
  * Los escenarios traen cada uno su propio estado ("1001 tiene 3 de 11…"): las semillas de
@@ -48,8 +49,12 @@ const PASILLO_3: Ubicacion = ['Planta Baja', '3', '3', '1'];
 const PASILLO_4: Ubicacion = ['Primer Piso', '4', '5', '1'];
 const PASILLO_4B: Ubicacion = ['Primer Piso', '4', '6', '2'];
 
-export const CLIENTE_A: Cliente = { id: 'CLI-A', nombre: 'AUTOPARTES DEL VALLE SA DE CV' };
-export const CLIENTE_B: Cliente = { id: 'CLI-B', nombre: 'REFACCIONARIA LA ÚNICA' };
+/**
+ * Clientes de la spec (`asignacion-tarea` · Cliente en el detalle de la ronda, clarificación 50): el id es el número de
+ * cliente, que se ve siempre como "{número} · {nombre}" y decide "Mismo cliente".
+ */
+export const CLIENTE_A: Cliente = { id: '48213', nombre: 'AUTOPARTES DEL VALLE SA DE CV' };
+export const CLIENTE_B: Cliente = { id: '51077', nombre: 'REFACCIONARIA LA ÚNICA' };
 
 export const KIT_AFINACION: Promocion = { id: 'PROMO-AFINACION', nombre: 'Kit afinación' };
 
@@ -82,6 +87,12 @@ export const PRODUCTOS: Record<string, Producto> = {
   '4001': { descripcion: 'Bujía de iridio', familia: 'BUJÍA', imagen: bujia, ubicacion: PASILLO_1, miscelaneo: true },
   '5001': { descripcion: 'Bomba de gasolina', familia: 'bomba', imagen: bombaGasolina, ubicacion: PASILLO_2, miscelaneo: true },
   '6001': { descripcion: 'Batería 12V', familia: 'Batería', imagen: bateria, ubicacion: PASILLO_3, miscelaneo: true },
+  /*
+   * "Familia con texto de relleno" (imagen-familia, clarificación 21): 2500 llega con la familia nula y 1500 con el
+   * relleno "SIN FAMILIA" del catálogo; los dos cuentan como sin familia.
+   */
+  '2500': { descripcion: 'Bomba de agua', familia: '', imagen: bombaGasolina, ubicacion: PASILLO_2, miscelaneo: true },
+  '1500': { descripcion: 'Bujía de cobre', familia: 'SIN FAMILIA', imagen: bujia, ubicacion: PASILLO_3, miscelaneo: true },
 };
 
 type Extras = { existencia?: number; promocion?: Promocion };
@@ -140,8 +151,9 @@ const PEDIDO_1003: Pedido = {
   ],
 };
 
+/** El folio de la ronda es el de la spec ("la ronda G-500 lleva 1001, 1002 y 1003", Sacar el pedido de la ronda). */
 export const RONDA_INICIAL: Ronda = {
-  id: 'R-20261021-01',
+  id: 'G-500',
   pedidos: [PEDIDO_1001, PEDIDO_1002, PEDIDO_1003],
 };
 
@@ -151,7 +163,7 @@ export const RONDA_INICIAL: Ronda = {
  * resumen de la ronda"). Una ronda de un solo pedido, para que se distinga a simple vista de la anterior.
  */
 export const SIGUIENTE_RONDA: Ronda = {
-  id: 'R-20261021-02',
+  id: 'G-501',
   pedidos: [{ id: '1004', cliente: CLIENTE_B, partidas: [partida('1978000', 2), partida('2010000', 1)] }],
 };
 

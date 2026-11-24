@@ -27,23 +27,39 @@ const CAMBIOS = {
   'cierre': '2026-11-05-multipedido-surtido-listado-cierre',
   'imagen-familia': '2026-10-26-surtido-listado-imagen-familia',
   'armado': '2026-10-26-multipedido-armado-ronda',
+  'configuracion': '2026-11-20-multipedido-configuracion-armado',
 };
+
+/**
+ * Además de `specs/` (capacidades de exodus-gtm-pwa) se leen los deltas de los servicios en `specs-servicio/`
+ * (desde el 2026-11-24): describen lo que el servidor hace con la ronda y la demo los simula. Su capacidad va con
+ * el prefijo `servicio/`.
+ */
+const CARPETAS = [
+  ['specs', ''],
+  ['specs-servicio', 'servicio/'],
+];
 
 const escenarios = [];
 for (const [cambio, carpeta] of Object.entries(CAMBIOS)) {
-  const dir = path.join(repo, 'sdd', 'changes', carpeta, 'specs');
-  if (!fs.existsSync(dir)) {
-    console.error(`No encuentro ${dir}. Pasa la ruta de exodus-gtm-pwa como argumento.`);
+  const base = path.join(repo, 'sdd', 'changes', carpeta);
+  if (!fs.existsSync(path.join(base, 'specs'))) {
+    console.error(`No encuentro ${path.join(base, 'specs')}. Pasa la ruta de exodus-gtm-pwa como argumento.`);
     process.exit(1);
   }
-  for (const capacidad of fs.readdirSync(dir).sort()) {
-    const archivo = path.join(dir, capacidad, 'spec.md');
-    if (!fs.existsSync(archivo)) continue;
-    let requisito = null;
-    for (const linea of fs.readFileSync(archivo, 'utf8').split(/\r?\n/)) {
-      let m;
-      if ((m = linea.match(/^### Requirement: (.+)/))) requisito = m[1].trim();
-      if ((m = linea.match(/^#### Scenario: (.+)/))) escenarios.push({ cambio, capacidad, requisito, escenario: m[1].trim() });
+  for (const [sub, prefijo] of CARPETAS) {
+    const dir = path.join(base, sub);
+    if (!fs.existsSync(dir)) continue;
+    for (const nombre of fs.readdirSync(dir).sort()) {
+      const archivo = path.join(dir, nombre, 'spec.md');
+      if (!fs.existsSync(archivo)) continue;
+      const capacidad = prefijo + nombre;
+      let requisito = null;
+      for (const linea of fs.readFileSync(archivo, 'utf8').split(/\r?\n/)) {
+        let m;
+        if ((m = linea.match(/^### Requirement: (.+)/))) requisito = m[1].trim();
+        if ((m = linea.match(/^#### Scenario: (.+)/))) escenarios.push({ cambio, capacidad, requisito, escenario: m[1].trim() });
+      }
     }
   }
 }

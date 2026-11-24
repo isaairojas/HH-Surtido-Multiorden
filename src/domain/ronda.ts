@@ -372,13 +372,28 @@ export function productosVista(r: Ronda): ProductoVista[] {
  * picking y en "Foco" salía 2012000 antes que 1978000). Los códigos sin familia van juntos al final, también
  * de menor a mayor. Solo reordena la vista: no cambia a qué pedido entra cada escaneo.
  */
+/**
+ * Textos de relleno que el catálogo trae en lugar de una familia (imagen-familia · Orden dentro de la agrupación por
+ * familia, clarificación 21). La lista exacta la confirma el diseño; la spec cita "SIN FAMILIA".
+ */
+const RELLENOS_FAMILIA = ['sin familia'];
+
+/**
+ * Familia que cuenta para agrupar: vacía si llega nula o vacía, con un texto de relleno o con la clasificación
+ * incompleta en el catálogo (la cadena Producto → apFamiliaGrupo → apDivisionFamilia → apFamilia rota llega vacía).
+ */
+export function familiaEfectiva(familia: string | null | undefined): string {
+  const f = (familia ?? '').trim();
+  return RELLENOS_FAMILIA.includes(f.toLocaleLowerCase('es')) ? '' : f;
+}
+
 export function ordenarPorFamilia(v: ProductoVista[]): ProductoVista[] {
-  const clave = (p: ProductoVista) => (p.familia.trim() ? 0 : 1);
+  const clave = (p: ProductoVista) => (familiaEfectiva(p.familia) ? 0 : 1);
   return [...v].sort(
     (a, b) =>
       clave(a) - clave(b) ||
-      a.familia.localeCompare(b.familia, 'es', { sensitivity: 'base' }) ||
-      a.codigo.localeCompare(b.codigo, 'es', { numeric: true }),
+      familiaEfectiva(a.familia).localeCompare(familiaEfectiva(b.familia), 'es', { sensitivity: 'base' }) ||
+      compararCodigoTexto(a, b),
   );
 }
 
@@ -397,6 +412,14 @@ const compararUbicacion = (a: Ubicacion, b: Ubicacion) => {
 const compararCodigo = (a: ProductoVista, b: ProductoVista) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true });
 
 /**
+ * Dentro de la agrupación por familia el código se compara como texto (imagen-familia · Orden dentro de la
+ * agrupación por familia): "1001" va antes que "999".
+ */
+function compararCodigoTexto(a: { codigo: string }, b: { codigo: string }): number {
+  return a.codigo < b.codigo ? -1 : a.codigo > b.codigo ? 1 : 0;
+}
+
+/**
  * Orden del listado, como el V2 de hoy (`AssortmentTaskController.getProductSections`): secciones Pendientes,
  * Parciales, Negados y Completados, sin encabezados y sin pintar las vacías, así que un código cambia de lugar al
  * cambiar de estado. Dentro de cada sección, por ubicación con `Bandera_UbicacionesUDN` o, si no, por código.
@@ -406,15 +429,15 @@ const compararCodigo = (a: ProductoVista, b: ProductoVista) => a.codigo.localeCo
  * SDD 2026-10-26-surtido-listado-imagen-familia · Agrupación por familia / Orden dentro de la agrupación por familia.
  */
 export function ordenarListado(v: ProductoVista[], o: { familia: boolean; ubicaciones: boolean }): ProductoVista[] {
-  const sinFamilia = (p: ProductoVista) => (p.familia.trim() ? 0 : 1);
+  const sinFamilia = (p: ProductoVista) => (familiaEfectiva(p.familia) ? 0 : 1);
   return [...v].sort((a, b) => {
     const seccion = SECCION[statusProducto(a)] - SECCION[statusProducto(b)];
     if (seccion) return seccion;
     if (o.familia) {
       return (
         sinFamilia(a) - sinFamilia(b) ||
-        a.familia.localeCompare(b.familia, 'es', { sensitivity: 'base' }) ||
-        compararCodigo(a, b)
+        familiaEfectiva(a.familia).localeCompare(familiaEfectiva(b.familia), 'es', { sensitivity: 'base' }) ||
+        compararCodigoTexto(a, b)
       );
     }
     return (o.ubicaciones ? compararUbicacion(a.ubicacion, b.ubicacion) : 0) || compararCodigo(a, b);
@@ -526,6 +549,8 @@ export function partidaACorregir(r: Ronda, codigo: string): PartidaACorregir | n
  */
 export type RechazoSurtido =
   | 'fuera-de-ronda'
+  | 'fuera-del-pedido'
+  | 'lectura-invalida'
   | 'producto-negado'
   | 'cantidad-cero'
   | 'excede-solicitado'
@@ -536,6 +561,16 @@ export const AVISOS: Record<RechazoSurtido, { title: string; message: string }> 
   'fuera-de-ronda': {
     title: 'Código inválido',
     message: 'El código escaneado no pertenece a ningún pedido de esta ronda.',
+  },
+  // Con un solo pedido, el texto de hoy (`es.ts`: el producto no pertenece al pedido).
+  'fuera-del-pedido': {
+    title: 'Código inválido',
+    message: 'El producto capturado no pertenece al pedido o no es válido.',
+  },
+  // Lectura que no es código ni etiqueta: el texto de hoy (`es.ts`).
+  'lectura-invalida': {
+    title: 'Código inválido',
+    message: 'El código de barras capturado no es válido.',
   },
   // Validación de producto escaneado: el código ya no lo necesita ningún pedido y está negado.
   'producto-negado': {
@@ -738,7 +773,12 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
       // Un pedido completo que queda incompleto se reabre solo: su partida vuelve a pedir el código.
       const loc = partidaACorregir(s.ronda, a.codigo);
       if (!loc) return s;
-      return conPartida(s, loc, { ...partidaEn(s.ronda, loc), surtido: 0 });
+      const corregido = conPartida(s, loc, { ...partidaEn(s.ronda, loc), surtido: 0 });
+      // Sus etiquetas únicas se liberan para escanearse de nuevo (clarificación 47 del listado: "Corregir un pedido con
+      // etiquetas únicas").
+      const pedidoId = s.ronda.pedidos[loc.pedidoIdx].id;
+      if (!s.etiquetas?.length) return corregido;
+      return { ...corregido, etiquetas: s.etiquetas.filter((e) => !(e.pedidoId === pedidoId && e.codigo === a.codigo)) };
     }
     case 'fijarCantidad': {
       // Solo la partida sin negar del pedido indicado, con una cantidad válida (si no, el estado no cambia).

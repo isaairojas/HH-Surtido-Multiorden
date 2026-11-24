@@ -78,6 +78,27 @@
 }
 
 /* "Etiqueta mismo cliente" 34:154 */
+.cliente {
+  display: flex;
+  flex: 1 0 0;
+  min-width: 1px;
+  font: var(--font-b1-body);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+/* El número de cliente se ve siempre; solo el nombre se corta con "…" (Cliente en el detalle de la ronda). */
+.numeroCliente {
+  flex-shrink: 0;
+  white-space: pre;
+}
+
+.nombreCliente {
+  min-width: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .badge {
   flex-shrink: 0;
   padding: 2px 8px;

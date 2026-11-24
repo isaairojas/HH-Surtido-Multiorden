@@ -4,7 +4,7 @@
  * (el THEN del escenario). Lo vigila `tests/domain/alineacion.test.mjs`. La revisión, la facturación y el embarque
  * del multipedido V2 se trabajarán después de liberar los cambios de Víctor Limón (2026-11-10).
  *
- * Los datos son los de la spec (`src/mocks/ronda.ts`): ronda R-20261021-01 con 1001 (A) y 1003 (C), del mismo
+ * Los datos son los de la spec (`src/mocks/ronda.ts`): ronda G-500 con 1001 (A) y 1003 (C), del mismo
  * cliente, y 1002 (B). Se escanean 0486600 y 1365800 (etiqueta de 18 dígitos); los demás son misceláneos (se
  * teclea el código y se captura la cantidad). 9999999 no está en la ronda.
  *
@@ -17,13 +17,14 @@
 import { etiqueta, qrEtiquetaUnica } from '../domain/codigos';
 import { PRESETS_ARMADO } from '../domain/armadoEscenarios';
 
-export type CambioId = 'armado' | 'listado' | 'cierre' | 'imagen-familia';
+export type CambioId = 'armado' | 'configuracion' | 'listado' | 'cierre' | 'imagen-familia';
 
 export const CAMBIOS: { id: CambioId; titulo: string; carpeta: string }[] = [
   { id: 'listado', titulo: 'Surtido multipedido V2 en el listado', carpeta: '2026-10-26-multipedido-surtido-listado' },
   { id: 'cierre', titulo: 'Cierre y salida del listado', carpeta: '2026-11-05-multipedido-surtido-listado-cierre' },
   { id: 'imagen-familia', titulo: 'Imagen y agrupación por familia', carpeta: '2026-10-26-surtido-listado-imagen-familia' },
   { id: 'armado', titulo: 'Armado de la ronda (servidor)', carpeta: '2026-10-26-multipedido-armado-ronda' },
+  { id: 'configuracion', titulo: 'Configuración del armado por sucursal', carpeta: '2026-11-20-multipedido-configuracion-armado' },
 ];
 
 export type Codigo = { etiqueta: string; valor: string };
@@ -140,56 +141,169 @@ const CASOS_HH: Caso[] = [
     pasos: ['Revisa el bloque "Pedidos".'],
     esperado: '"Contenedor A" con 1001, "Contenedor B" con 1002 y "Contenedor C" con 1003.',
   },
+  /* ---- Ronda multipedido V2 en la asignación (clarificación 63) ---- */
   {
-    id: 'dos-mismo-cliente',
+    id: 'ronda-armada-v2',
     cambio: 'listado',
-    requisito: 'Pedidos de la ronda en la tarea asignada',
-    escenario: 'Dos pedidos del mismo cliente',
+    requisito: 'Ronda multipedido V2 en la asignación',
+    escenario: 'Ronda armada por el multipedido V2',
     semilla: 'tareas',
     ruta: '/tareas',
-    pasos: ['1001 y 1003 son del mismo cliente.', TAREA, 'Revisa el Detalle de la ronda.'],
-    esperado: 'Un panel por contenedor con piezas, códigos, número y cliente; los paneles A y C llevan "Mismo cliente" y B no.',
+    pasos: ['La sucursal tiene las dos banderas activas y la ronda G-500 (1001, 1002 y 1003) la armó el multipedido V2.', 'Revisa el bloque "Pedidos".', TAREA, 'En el Detalle de la ronda toca "Iniciar surtido".'],
+    esperado: 'Es ronda multipedido V2: ve "Contenedor A", "Contenedor B" y "Contenedor C" y se abre el listado.',
   },
   {
-    id: 'mismo-cliente-off',
+    id: 'factura-dividida',
     cambio: 'listado',
-    requisito: 'Pedidos de la ronda en la tarea asignada',
-    escenario: 'Indicador de mismo cliente desactivado',
-    semilla: 'mismo-cliente-off',
+    requisito: 'Ronda multipedido V2 en la asignación',
+    escenario: 'Partes de una factura dividida',
+    semilla: 'factura-dividida',
     ruta: '/tareas',
-    pasos: ['Bandera_MultipedidoMismoCliente está inactiva y 1001 y 1003 son del mismo cliente.', TAREA],
-    esperado: 'Ningún panel del Detalle de la ronda lleva "Mismo cliente".',
+    pasos: ['La sucursal tiene activas las dos banderas y BndUnificarRondasMontos; la tarea trae las 3 partes de una factura dividida por montos.', TAREA],
+    esperado: 'No es ronda multipedido V2: el bloque "Pedidos" no lleva "Contenedor {letra}" y se abre el surtido anterior, el flujo de hoy para varios pedidos.',
   },
+  {
+    id: 'ronda-paqueteria',
+    cambio: 'listado',
+    requisito: 'Ronda multipedido V2 en la asignación',
+    escenario: 'Ronda de paquetería',
+    semilla: 'paqueteria',
+    ruta: '/tareas',
+    pasos: ['La sucursal tiene activas las dos banderas y la tarea es una ronda de foráneos para paquetería con varios pedidos.', TAREA],
+    esperado: 'No es ronda multipedido V2: sin "Contenedor {letra}" y se abre el surtido anterior, el flujo de hoy para varios pedidos.',
+  },
+  {
+    id: 'sugerencia-embarque',
+    cambio: 'listado',
+    requisito: 'Ronda multipedido V2 en la asignación',
+    escenario: 'Tarea de una sugerencia de embarque',
+    semilla: 'sugerencia-embarque',
+    ruta: '/tareas',
+    pasos: ['La sucursal tiene activas las dos banderas y la tarea sale de una sugerencia de órdenes a un embarque existente.', TAREA],
+    esperado: 'No es ronda multipedido V2 y se surte como hoy: sin "Contenedor {letra}" y con el surtido anterior.',
+  },
+  {
+    id: 'falla-bandera-listado',
+    cambio: 'listado',
+    requisito: 'Ronda multipedido V2 en la asignación',
+    escenario: 'Falla la consulta de la bandera de listado',
+    semilla: 'falla-bandera-listado',
+    ruta: '/tareas',
+    pasos: ['La tarea trae 3 pedidos que armó el multipedido V2 y la consulta de BanderaListadoDeProductosEnHH falla por error de conexión.', 'Revisa el bloque "Pedidos".', TAREA],
+    esperado: 'No se muestra "Contenedor {letra}"; la bandera se trata como inactiva: alerta global de error y se abre el surtido anterior.',
+  },
+
+  /* ---- Pedidos de la ronda en la tarea asignada ---- */
+
+  /* ---- Detalle de la ronda al aceptar (clarificación 64) ---- */
   {
     id: 'detalle-sin-folios',
     cambio: 'listado',
-    requisito: 'Pedidos de la ronda en la tarea asignada',
+    requisito: 'Detalle de la ronda al aceptar',
     escenario: 'El detalle de la ronda no consume folios',
     semilla: 'tareas',
     ruta: '/tareas',
     pasos: [TAREA, 'Revisa los paneles del Detalle de la ronda.'],
     esperado:
-      'Cada panel muestra el cliente y los totales de su propio pedido. Que no se consuma ningún folio de contenedor virtual es del servidor: en la demo el contenedor solo se vincula al tocar "Iniciar surtido".',
-  },
-  {
-    id: 'falla-datos-pedido',
-    cambio: 'listado',
-    requisito: 'Pedidos de la ronda en la tarea asignada',
-    escenario: 'Falla la consulta de los datos de un pedido',
-    semilla: 'falla-datos-pedido',
-    ruta: '/tareas',
-    pasos: ['La consulta de los datos de 1002 falla.', TAREA],
-    esperado: 'Alerta global de error y el Detalle de la ronda se abre con los tres paneles; el de 1002 (B) sin cliente ni totales. "Iniciar surtido" sigue disponible.',
+      'Cada panel muestra el número y el nombre del cliente y los totales de su propio pedido. Que no se consuma ningún folio de contenedor virtual es del servidor: en la demo el contenedor solo se vincula al tocar "Iniciar surtido".',
   },
   {
     id: 'iniciar-surtido',
     cambio: 'listado',
-    requisito: 'Pedidos de la ronda en la tarea asignada',
+    requisito: 'Detalle de la ronda al aceptar',
     escenario: 'Iniciar el surtido desde el detalle de la ronda',
     semilla: 'detalle-ronda',
     ruta: '/ronda',
     pasos: ['Toca "Iniciar surtido".'],
     esperado: 'Se abre el listado de productos de la ronda.',
+  },
+  {
+    id: 'cerrar-detalle',
+    cambio: 'listado',
+    requisito: 'Detalle de la ronda al aceptar',
+    escenario: 'Cerrar el detalle sin tomar la tarea',
+    semilla: 'tareas',
+    ruta: '/tareas',
+    pasos: [TAREA, 'En el Detalle de la ronda toca la flecha de regreso (no lleva texto).', 'Toca ✓ (Aceptar) otra vez.'],
+    esperado:
+      'Regresa a la tarea asignada sin tomarla y sin consumir folios de contenedor virtual; al aceptar de nuevo vuelve a ver el Detalle de la ronda.',
+  },
+
+  /* ---- Falla al cargar la ronda (clarificaciones 51, 52 y 65) ---- */
+  {
+    id: 'falla-consulta-ronda',
+    cambio: 'listado',
+    requisito: 'Falla al cargar la ronda',
+    escenario: 'Falla la consulta de la ronda',
+    semilla: 'falla-ronda-al-aceptar',
+    ruta: '/tareas',
+    pasos: ['La consulta de los pedidos de la ronda (1001, 1002 y 1003) falla.', TAREA, 'Toca ✓ (Aceptar) otra vez.'],
+    esperado:
+      'Alerta global de error; no se abre el Detalle de la ronda, la tarea no se toma y sigue en la tarea asignada. Al aceptar de nuevo se vuelve a consultar (en la demo ya responde y se abre el Detalle de la ronda).',
+  },
+  {
+    id: 'falla-consulta-factura',
+    cambio: 'listado',
+    requisito: 'Falla al cargar la ronda',
+    escenario: 'Falla la consulta en una factura dividida',
+    semilla: 'falla-ronda-factura',
+    ruta: '/tareas',
+    pasos: ['Las dos banderas activas; la tarea trae las 3 partes de una factura dividida y la consulta de los pedidos de la ronda falla.', TAREA],
+    esperado: 'Alerta global de error; la tarea no se toma y sigue en la tarea asignada para reintentar, igual que una ronda multipedido V2.',
+  },
+  {
+    id: 'falla-consulta-antes',
+    cambio: 'listado',
+    requisito: 'Falla al cargar la ronda',
+    escenario: 'Falla la consulta antes de aceptar',
+    semilla: 'falla-ronda-al-mostrar',
+    ruta: '/tareas',
+    pasos: ['La tarea trae 1001, 1002 y 1003 y la consulta de los pedidos de la ronda falla al mostrarla.', 'Revisa el bloque "Pedidos".', TAREA],
+    esperado:
+      'La tarea asignada se ve como hoy, sin "Contenedor {letra}" y sin aviso. Al aceptar, la consulta vuelve a fallar y sale la alerta global de error; la tarea no se toma.',
+  },
+  {
+    id: 'pedido-sin-datos',
+    cambio: 'listado',
+    requisito: 'Falla al cargar la ronda',
+    escenario: 'Un pedido de la ronda llega sin datos',
+    semilla: 'pedido-sin-datos',
+    ruta: '/tareas',
+    pasos: ['La consulta responde, pero 1002 llega sin número o sin nombre de cliente.', TAREA],
+    esperado: 'Ve "No se pudo cargar la información de la ronda."; no se abre el Detalle de la ronda, la tarea no se toma y sigue en la tarea asignada para reintentar.',
+  },
+
+  /* ---- Cliente en el detalle de la ronda (clarificación 50) ---- */
+  {
+    id: 'dos-mismo-cliente',
+    cambio: 'listado',
+    requisito: 'Cliente en el detalle de la ronda',
+    escenario: 'Dos pedidos del mismo cliente',
+    semilla: 'tareas',
+    ruta: '/tareas',
+    pasos: ['1001 y 1003 son del cliente 48213 "AUTOPARTES DEL VALLE SA DE CV" y 1002 del 51077 "REFACCIONARIA LA ÚNICA".', TAREA],
+    esperado:
+      'El panel B muestra "51077 · REFACCIONARIA LA ÚNICA"; los paneles A y C muestran "48213 · AUTOPARTES DEL VALLE SA DE CV" (el nombre puede verse cortado con "…") y llevan "Mismo cliente".',
+  },
+  {
+    id: 'nombre-cliente-largo',
+    cambio: 'listado',
+    requisito: 'Cliente en el detalle de la ronda',
+    escenario: 'Nombre de cliente que no cabe en el panel',
+    semilla: 'detalle-ronda',
+    ruta: '/ronda',
+    pasos: ['El pedido 1001 es del cliente 48213 "AUTOPARTES DEL VALLE SA DE CV".', 'Revisa el panel A (en la HH de ~360 px o en el marco de 430 px).'],
+    esperado: 'El panel A muestra el número de cliente completo y el nombre cortado con "…", p. ej. "48213 · AUTOPARTES DEL VALLE SA D…".',
+  },
+  {
+    id: 'mismo-cliente-off',
+    cambio: 'listado',
+    requisito: 'Cliente en el detalle de la ronda',
+    escenario: 'Indicador de mismo cliente desactivado',
+    semilla: 'mismo-cliente-off',
+    ruta: '/tareas',
+    pasos: ['Bandera_MultipedidoMismoCliente está inactiva y 1001 y 1003 son del mismo cliente.', TAREA],
+    esperado: 'Ningún panel del Detalle de la ronda lleva "Mismo cliente"; cada uno sigue mostrando "{número} · {nombre}" de su cliente.',
   },
 
   /* ================= 2026-10-26-multipedido-surtido-listado · surtido-listado ================= */
@@ -429,8 +543,19 @@ const CASOS_HH: Caso[] = [
     escenario: 'Falla del servicio de negación',
     semilla: 'falla-negar',
     ruta: '/detalle/0486600',
-    pasos: ['El servicio de negación falla.', 'Toca "Negar producto", elige un motivo y acepta.'],
+    pasos: ['El servicio de negación falla (en todos los pedidos).', 'Toca "Negar producto", elige un motivo y acepta.'],
     esperado: '"No es posible negar el producto" ("Ocurrió un error al negar el producto, por favor intenta de nuevo.") y ningún pedido queda negado.',
+  },
+  {
+    id: 'falla-negar-en-uno',
+    cambio: 'listado',
+    requisito: 'Negar producto desde el detalle',
+    escenario: 'Falla la negación en uno de los pedidos',
+    semilla: 'falla-negar-en-b',
+    ruta: '/detalle/0486600',
+    pasos: ['0486600 está en 1001 (3 de 11 surtidas), 1002 y 1003; el registro de la negación de 1002 falla.', 'Toca "Negar producto", elige un motivo y acepta.'],
+    esperado:
+      '"No es posible negar el producto"; ninguno de los tres pedidos queda negado, 1001 conserva sus 3 piezas y se puede reintentar (en la demo el reintento ya pasa).',
   },
   {
     id: 'corporativo-en-cascada',
@@ -463,17 +588,6 @@ const CASOS_HH: Caso[] = [
     esperado: '"Pedido corporativo" y el mensaje que indica finalizar manualmente y sacar el pedido de la ronda.',
   },
   {
-    id: 'dos-hh',
-    cambio: 'listado',
-    requisito: 'Finalizar el surtido del pedido',
-    escenario: 'Dos HH con la misma ronda',
-    semilla: 'concluida-por-otro',
-    ruta: '/surtido',
-    pasos: ['Otro usuario ya finalizó la misma ronda.', ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓.'],
-    esperado: '"Esta tarea ya fue concluida por otro usuario." Cuentan los registros del primero; con "Aceptar" vuelve a la asignación de tareas.',
-    codigos: [c('2010000')],
-  },
-  {
     id: 'finalizar-ronda-3',
     cambio: 'listado',
     requisito: 'Finalizar el surtido del pedido',
@@ -493,7 +607,7 @@ const CASOS_HH: Caso[] = [
     ruta: '/surtido',
     pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓.'],
     esperado:
-      'El toast "Surtido finalizado" ("¡Se completó la ronda de surtido exitosamente!") sale sobre la asignación de tareas, con la siguiente tarea ya cargada (R-20261021-02, pedido 1004). No hay pantalla de resumen con el avance ni la lista de pedidos de la ronda.',
+      'El toast "Surtido finalizado" ("¡Se completó la ronda de surtido exitosamente!") sale sobre la asignación de tareas, con la siguiente tarea ya cargada (G-501, pedido 1004). No hay pantalla de resumen con el avance ni la lista de pedidos de la ronda.',
     codigos: [c('2010000')],
   },
   {
@@ -536,7 +650,18 @@ const CASOS_HH: Caso[] = [
     semilla: 'falla-retiro',
     ruta: '/surtido',
     pasos: ['El servicio de retiro falla.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacar 1002.'],
-    esperado: 'Alerta global de error; 1002 sigue en la ronda y el usuario permanece en el listado.',
+    esperado:
+      '"El pedido corporativo no pudo ser retirado de la ronda por un error en el sistema. Vuelva a intentar." con la única opción de cerrar; 1002 sigue en la ronda y en el listado.',
+  },
+  {
+    id: 'falla-registro-retiro',
+    cambio: 'listado',
+    requisito: 'Sacar el pedido de la ronda',
+    escenario: 'Falla el registro del retiro',
+    semilla: 'falla-registro-retiro',
+    ruta: '/surtido',
+    pasos: ['No se puede guardar el registro del retiro.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacar 1002.'],
+    esperado: 'El mismo aviso, con la única opción de cerrar; 1002 sigue en la ronda y se puede volver a intentar (en la demo el reintento ya pasa).',
   },
   {
     id: 'corporativo-sin-piezas',
@@ -549,14 +674,26 @@ const CASOS_HH: Caso[] = [
     esperado: 'Las piezas surtidas de 1001 y 1003 no cambian y solo baja el total requerido.',
   },
   {
-    id: 'retirar-pedido-unico',
+    id: 'retirar-pedido',
     cambio: 'listado',
     requisito: 'Sacar el pedido de la ronda',
     escenario: 'Retirar pedido',
+    semilla: 'corporativo-incompleto',
+    ruta: '/surtido',
+    pasos: ['1002 es corporativo con orden de compra y quedan productos incompletos.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
+    esperado:
+      '"Pedido retirado de la ronda" ("Aparta la mercancía ya surtida y repórtalo para su validación.") y regresa a la ventana principal sin 1002 en tarjetas, filas ni desglose.',
+  },
+  {
+    id: 'retirar-pedido-unico',
+    cambio: 'listado',
+    requisito: 'Sacar el pedido de la ronda',
+    escenario: 'Retirar el único pedido',
     semilla: 'pedido-unico-corporativo-incompleto',
     ruta: '/surtido',
-    pasos: ['El pedido es corporativo con orden de compra y quedan productos incompletos.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
-    esperado: '"Pedido retirado de la ronda" y regresa. Como era el único pedido, sale el aviso de la ronda sin pedidos y vuelve a la asignación de tareas.',
+    pasos: ['La tarea tiene un solo pedido, corporativo con orden de compra e incompleto.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
+    esperado:
+      '"Pedido retirado de la ronda" y regresa como hoy, a la asignación de tareas; no queda en una ventana principal vacía ni sale "Ronda sin pedidos". (Lo mismo con el último pedido que queda de una ronda: caso "Se sacan corporativos hasta quedar uno".)',
   },
   {
     id: 'queda-un-pedido',
@@ -565,8 +702,32 @@ const CASOS_HH: Caso[] = [
     escenario: 'Queda un solo pedido en la ronda',
     semilla: 'ronda-dos-corporativo',
     ruta: '/surtido',
-    pasos: ['Ronda de 2 pedidos; 1002 es corporativo e incompleto.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
-    esperado: 'La lista muestra solo los códigos de 1001, sin tarjetas ni desglose de varios pedidos, y puede finalizarse.',
+    pasos: ['Ronda de 2 pedidos; 1002 es corporativo e incompleto.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.', 'Abre el detalle de un código.'],
+    esperado:
+      'El listado se ve como el de un solo pedido de hoy: solo los códigos de 1001, sin tarjetas de contenedor, sin "Surtido por pedido" en el detalle ni avisos de cambio de pedido, y puede finalizarse.',
+  },
+  {
+    id: 'registro-retiro',
+    cambio: 'listado',
+    requisito: 'Sacar el pedido de la ronda',
+    escenario: 'Registro del retiro del corporativo',
+    semilla: 'corporativo-incompleto',
+    ruta: '/surtido',
+    pasos: ['La ronda G-500 lleva 1001, 1002 (corporativo) y 1003.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacar 1002.'],
+    esperado:
+      'En la HH: 1001 y 1003 siguen en la ronda (tarjetas A y C). En el servidor queda guardado que 1002 salió de la ronda G-500, donde iba con 1001 y 1003 (la demo no muestra lo que se guarda en el servidor).',
+  },
+  {
+    id: 'corporativo-no-se-retira',
+    cambio: 'listado',
+    requisito: 'Sacar el pedido de la ronda',
+    escenario: 'Corporativo que no se retira',
+    semilla: 'corporativo-al-filo',
+    ruta: '/surtido',
+    pasos: ['La ronda G-500 lleva 1001 y 1002 (corporativo); a 1002 le falta 1 pieza de 1394010.', ESCANEA('1394010', 1), 'En "Finalizar surtido" toca ✓.'],
+    esperado:
+      'La ronda se surte completa sin sacar a 1002: no sale "No es posible finalizar este pedido" y termina con "Surtido finalizado". En el servidor no se guarda ningún registro de retiro para 1002.',
+    codigos: [c('1394010')],
   },
   {
     id: 'sin-mismo-cliente-listado',
@@ -831,15 +992,40 @@ const CASOS_HH: Caso[] = [
     codigos: [c('1394010')],
   },
   {
+    id: 'corregir-con-eu',
+    cambio: 'listado',
+    requisito: 'Corregir la cantidad surtida de un pedido',
+    escenario: 'Corregir un pedido con etiquetas únicas',
+    semilla: 'eu-correccion',
+    ruta: '/detalle/0486600',
+    pasos: [
+      '0486600 requiere etiqueta única y C (pedido 1003) tiene 2 de 3 con las etiquetas E1 y E2.',
+      'Toca "Corregir C" y acepta.',
+      'Toca "Regresar" y pega el QR E1.',
+    ],
+    esperado: 'E1 se acepta y C queda en 1/3, sin el aviso "La etiqueta ya fue escaneada en esta ronda".',
+    codigos: [qr(1)],
+  },
+  {
     id: 'promo-segundo-pedido',
     cambio: 'listado',
     requisito: 'Promoción incompleta al finalizar la ronda',
     escenario: 'Incompleta solo en el segundo pedido',
     semilla: 'promocion',
     ruta: '/surtido',
-    pasos: ['"Kit afinación" (0486600 + 2389475) está en 1001 y 1002; 1001 la completó y en 1002 se negó 2389475 con 0486600 en 5 de 5.', ESCANEA('2010000', 1)],
+    pasos: ['"Kit afinación" (0486600 + 2389475) está en 1001 y 1002; 1001 la completó y en 1002 se negó 2389475 con 0486600 en 5 de 5.', ESCANEA('2010000', 1), 'Toca "Finalizar surtido" (con una promoción pendiente la ronda no ofrece finalizar sola).'],
     esperado: 'Se ve la promoción con solo el pedido 1002 y la ronda no se cierra.',
     codigos: [c('2010000')],
+  },
+  {
+    id: 'promo-sin-negados',
+    cambio: 'listado',
+    requisito: 'Promoción incompleta al finalizar la ronda',
+    escenario: 'Incompleta sin códigos negados',
+    semilla: 'promocion-sin-negados',
+    ruta: '/surtido',
+    pasos: ['En 1002 "Kit afinación" lleva 0486600 en 5 de 5 y 2389475 en 1 de 2, sin ningún código negado.', 'Toca ⋮ → "Finalizar surtido".'],
+    esperado: 'Se ve la promoción incompleta del pedido 1002 con el avance de sus dos códigos y la ronda no se cierra.',
   },
   {
     id: 'promo-cancelar',
@@ -848,7 +1034,7 @@ const CASOS_HH: Caso[] = [
     escenario: 'Cancelar sin retirar',
     semilla: 'promocion',
     ruta: '/surtido',
-    pasos: [ESCANEA('2010000', 1), 'En la promoción de 1002 toca ✕.', 'Toca "Finalizar surtido" abajo.'],
+    pasos: [ESCANEA('2010000', 1), 'Toca "Finalizar surtido" (con una promoción pendiente la ronda no ofrece finalizar sola).', 'En la promoción de 1002 toca ✕.', 'Toca "Finalizar surtido" abajo otra vez.'],
     esperado: 'Vuelve al listado con 0486600 aún surtido en 1002 (B 5/5) y el flujo de la promoción se puede reabrir con "Finalizar surtido".',
     codigos: [c('2010000')],
   },
@@ -859,7 +1045,7 @@ const CASOS_HH: Caso[] = [
     escenario: 'Eliminar los productos de la promoción',
     semilla: 'promocion',
     ruta: '/surtido',
-    pasos: [ESCANEA('2010000', 1), 'En la promoción toca "Eliminar productos" y pega 0486600.'],
+    pasos: [ESCANEA('2010000', 1), 'Toca "Finalizar surtido" (con una promoción pendiente la ronda no ofrece finalizar sola).', 'En la promoción toca "Eliminar productos" y pega 0486600.'],
     esperado:
       '0486600 queda negado en 0 con el motivo de promoción (6) en 1002 y 1001 conserva lo surtido. "Promoción negada": "Retira los siguientes productos del contenedor:" con el contenedor B, 0486600 "5 de 5" y 2389475 "Negado".',
     codigos: [c('2010000'), c('0486600')],
@@ -871,9 +1057,24 @@ const CASOS_HH: Caso[] = [
     escenario: 'Código que no es de la promoción',
     semilla: 'promocion',
     ruta: '/surtido',
-    pasos: [ESCANEA('2010000', 1), 'En la promoción toca "Eliminar productos".', 'Pega la etiqueta de 1 pieza de 1365800, que no es de la promoción.'],
+    pasos: [ESCANEA('2010000', 1), 'Toca "Finalizar surtido" (con una promoción pendiente la ronda no ofrece finalizar sola).', 'En la promoción toca "Eliminar productos".', 'Pega la etiqueta de 1 pieza de 1365800, que no es de la promoción.'],
     esperado: '"Código inválido" ("El código escaneado no pertenece a los códigos con promoción."), vuelve a "Finalizar surtido" y nada se niega.',
     codigos: [c('2010000'), e18('1365800', 1)],
+  },
+  {
+    id: 'promo-falla-eliminar',
+    cambio: 'listado',
+    requisito: 'Promoción incompleta al finalizar la ronda',
+    escenario: 'Falla "Eliminar productos" en uno de los pedidos',
+    semilla: 'falla-eliminar-promocion',
+    ruta: '/surtido',
+    pasos: [
+      '"Kit afinación" quedó incompleta en 1001 y 1002 y el registro de la negación de 1002 falla.',
+      'Toca "Finalizar surtido"; en la promoción toca "Eliminar productos" y pega 0486600.',
+    ],
+    esperado:
+      'Sale el error de negación de hoy ("No es posible negar el producto"); la promoción no queda negada en ningún pedido y sigue en "Finalizar surtido" para reintentar (en la demo el reintento ya pasa).',
+    codigos: [c('0486600')],
   },
 
   /* ================= 2026-11-05-multipedido-surtido-listado-cierre ================= */
@@ -898,6 +1099,17 @@ const CASOS_HH: Caso[] = [
     pasos: ['Toca ⋮ → "Finalizar surtido" y toca ✓ para sacar el corporativo 1002.', 'Toca "Menú" (regresar) y acepta.'],
     esperado:
       'La confirmación dice "Se verán afectados los 2 pedidos de la ronda" y se desvinculan 1001 y 1003. Que 1002 conserve su registro para surtirse fuera de la ronda es del servidor.',
+  },
+  {
+    id: 'salir-tras-cancelado',
+    cambio: 'cierre',
+    requisito: 'Salir del listado deshace el vínculo',
+    escenario: 'Salida después de aceptar un cancelado',
+    semilla: 'cancelado-al-finalizar',
+    ruta: '/surtido',
+    pasos: ['1002 quedó cancelado.', 'Toca ⋮ → "Finalizar surtido" y "Aceptar" en "Pedido cancelado".', 'Toca "Menú" (regresar) y acepta.'],
+    esperado:
+      'La confirmación dice "Se verán afectados los 2 pedidos de la ronda" y sale sin ningún aviso más. Se desvinculan los tres contenedores, incluido el de 1002 (eso es del servidor; la demo no lo muestra).',
   },
   {
     id: 'falla-desvincular-pedido',
@@ -948,7 +1160,18 @@ const CASOS_HH: Caso[] = [
     ruta: '/surtido',
     pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓: 1001 se registra y el guardado de 1002 falla por la red.', 'En "Tarea incompleta" toca "Cancelar".'],
     esperado:
-      '"Tarea incompleta" ("Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo.") con el pedido 1002 (contenedor B). Al cancelar se desvincula la tarea completa, ningún pedido conserva lo registrado y la tarea queda pendiente en la lista, sin avance.',
+      '"Tarea incompleta" ("No se pudo guardar el pedido 1002. Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo."). Al cancelar se desvincula la tarea completa, ningún pedido conserva lo registrado y la tarea queda pendiente en la lista, sin avance.',
+    codigos: [c('2010000')],
+  },
+  {
+    id: 'falla-desvincular-al-cancelar',
+    cambio: 'cierre',
+    requisito: 'Bloqueos y fallas al finalizar',
+    escenario: 'Falla la desvinculación al cancelar',
+    semilla: 'falla-desvincular-al-cancelar',
+    ruta: '/surtido',
+    pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓: falla el guardado de 1002.', 'En "Tarea incompleta" toca "Cancelar": la desvinculación falla.'],
+    esperado: 'Sigue en "Tarea incompleta" con "Cancelar" y "Reintentar" y no sale al inicio, para que ninguna ronda quede a medio registrar.',
     codigos: [c('2010000')],
   },
   {
@@ -970,7 +1193,7 @@ const CASOS_HH: Caso[] = [
     semilla: 'falla-guardado-servidor',
     ruta: '/surtido',
     pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓: 1001 se registra y el guardado de 1002 falla con un error del servidor.'],
-    esperado: '"Tarea incompleta" con las mismas opciones "Cancelar" y "Reintentar" que ante una falla de red. (El texto del error del servidor es provisional: la spec no lo cita.)',
+    esperado: '"Tarea incompleta" con las mismas opciones "Cancelar" y "Reintentar" que ante una falla de red (y el mismo texto: la HH de hoy no tiene otro).',
     codigos: [c('2010000')],
   },
   {
@@ -994,6 +1217,29 @@ const CASOS_HH: Caso[] = [
     pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓: 1001 se registra y otro usuario concluye la ronda antes de 1002.'],
     esperado: '"Esta tarea ya fue concluida por otro usuario." Cuentan los registros del primero que concluyó y lo ya registrado de 1001 no se deshace.',
     codigos: [c('2010000')],
+  },
+  {
+    id: 'falla-cierre-ronda',
+    cambio: 'cierre',
+    requisito: 'Bloqueos y fallas al finalizar',
+    escenario: 'Falla el cierre de la ronda',
+    semilla: 'falla-cierre-ronda',
+    ruta: '/surtido',
+    pasos: [ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓: 1001, 1002 y 1003 se registran y falla el cierre de la ronda por la red.', 'En "Tarea incompleta" toca "Reintentar".'],
+    esperado:
+      '"Tarea incompleta" ("No se pudo cerrar la ronda. Hubo un error de red al finalizar el surtido. Por favor, acércate a un access point y vuelve a intentarlo."). Al reintentar solo se vuelve a cerrar la ronda, sin registrar otra vez los pedidos, y sale "Surtido finalizado".',
+    codigos: [c('2010000')],
+  },
+  {
+    id: 'falla-guardado-pedido-unico',
+    cambio: 'cierre',
+    requisito: 'Bloqueos y fallas al finalizar',
+    escenario: 'Falla el guardado con un solo pedido',
+    semilla: 'falla-guardado-pedido-unico',
+    ruta: '/surtido',
+    pasos: ['La tarea tiene un solo pedido (1001) y su guardado falla por la red.', ESCANEA('1394010', 1), 'En "Finalizar surtido" toca ✓ y, en "Tarea incompleta", "Cancelar".'],
+    esperado: 'El mensaje es el de hoy, sin "No se pudo guardar el pedido {número}.", y "Cancelar" se comporta como hoy: desvincula y vuelve a la asignación de tareas.',
+    codigos: [c('1394010')],
   },
   {
     id: 'parciales-varios',
@@ -1021,9 +1267,9 @@ const CASOS_HH: Caso[] = [
     cambio: 'cierre',
     requisito: 'Guía por voz en el listado',
     escenario: 'Resumen de una ronda multipedido V2',
-    semilla: 'voz-ronda-58',
+    semilla: 'voz-ronda-31',
     ruta: '/surtido',
-    pasos: ['Ronda multipedido V2 de 3 pedidos en una tarea 58. Se abre el listado.'],
+    pasos: ['Ronda multipedido V2 de 3 pedidos en una tarea de surtido de pedidos (actividad 31) con "Lectura de elementos" encendida. Se abre el listado.'],
     esperado: `La voz dice "Ronda de 3 pedidos, 0 códigos surtidos, 0 surtidos parcialmente y 7 pendientes de surtir", sin leer el folio de la ronda. ${VOZ}`,
   },
   {
@@ -1043,18 +1289,18 @@ const CASOS_HH: Caso[] = [
     escenario: 'Resumen al abrir',
     semilla: 'voz-31-encendida',
     ruta: '/surtido',
-    pasos: ['Tarea 31 con el listado y "Lectura de elementos" de "Tareas de surtido" encendida. Se abre el listado.'],
+    pasos: ['Tarea de surtido de pedidos (actividad 31) con el listado y "Lectura de elementos" de "Tareas de surtido" encendida. Se abre el listado.'],
     esperado: `La voz dice cuántos códigos están surtidos, parciales y pendientes. También lee el resumen al completar un producto. ${VOZ}`,
   },
   {
     id: 'voz-58-apagada',
     cambio: 'cierre',
     requisito: 'Guía por voz en el listado',
-    escenario: 'Tarea 58 con lectura apagada',
+    escenario: 'Surtido de balanceo con lectura apagada',
     semilla: 'voz-58-apagada',
     ruta: '/surtido',
-    pasos: ['"Lectura de elementos" de "Tareas de surtido" está apagada y se abre el listado de una tarea 58.'],
-    esperado: `La voz dice igual cuántos códigos están surtidos, parciales y pendientes: la preferencia no aplica a la tarea 58. ${VOZ}`,
+    pasos: ['"Lectura de elementos" de "Tareas de surtido" está apagada y se abre el listado de una tarea de surtido de balanceo (actividad 58), que es de un solo pedido: los balanceos no forman ronda multipedido V2.'],
+    esperado: `La voz dice igual cuántos códigos están surtidos, parciales y pendientes ("Pedido 1001, …"): la preferencia no aplica al surtido de balanceo. ${VOZ}`,
   },
   {
     id: 'orden-corporativo-primero',
@@ -1087,9 +1333,29 @@ const CASOS_HH: Caso[] = [
     esperado: 'Ya sin 1002, sale "No es posible finalizar surtido" con "Tienes códigos sin surtir…".',
   },
   {
-    id: 'orden-promocion-sigue',
+    id: 'orden-solo-promocion',
     cambio: 'cierre',
     requisito: 'Orden de los avisos al finalizar',
+    escenario: 'Solo una promoción incompleta',
+    semilla: 'solo-promocion',
+    ruta: '/surtido',
+    pasos: ['No hay pedidos cancelados, corporativos incompletos, códigos en cero ni parciales, y en 1001 "Kit afinación" quedó incompleta.', 'Toca "Finalizar surtido".'],
+    esperado: 'Sale solo el aviso de la promoción incompleta del pedido 1001, sin ningún aviso anterior.',
+  },
+  {
+    id: 'orden-solo-ceros',
+    cambio: 'cierre',
+    requisito: 'Orden de los avisos al finalizar',
+    escenario: 'Solo códigos en cero',
+    semilla: 'solo-ceros',
+    ruta: '/surtido',
+    pasos: ['No hay cancelados, corporativos incompletos, promociones incompletas ni parciales, y 1002 tiene 2389475 en 0 sin negar.', 'Toca ⋮ → "Finalizar surtido".'],
+    esperado: 'Sale solo "No es posible finalizar surtido" con "Tienes códigos sin surtir…", sin ningún aviso anterior.',
+  },
+  {
+    id: 'orden-promocion-sigue',
+    cambio: 'cierre',
+    requisito: 'Continuación tras un aviso al finalizar',
     escenario: 'La promoción negada sigue con el cierre',
     semilla: 'promocion-y-parciales',
     ruta: '/surtido',
@@ -1100,12 +1366,22 @@ const CASOS_HH: Caso[] = [
   {
     id: 'orden-parciales-confirman',
     cambio: 'cierre',
-    requisito: 'Orden de los avisos al finalizar',
+    requisito: 'Continuación tras un aviso al finalizar',
     escenario: 'Los parciales son la confirmación',
     semilla: 'parcial-en-a',
     ruta: '/surtido',
     pasos: ['1001 tiene un producto parcial (1394010, 2 de 4) y no hay corporativos, códigos en cero ni promociones incompletas.', 'Toca ⋮ → "Finalizar surtido" y, en el aviso de parciales, toca ✓.'],
     esperado: 'La ronda se finaliza sin mostrar además "Haz surtido el total de productos solicitados ¿Deseas finalizar la ronda?".',
+  },
+  {
+    id: 'sacar-regresa',
+    cambio: 'cierre',
+    requisito: 'Continuación tras un aviso al finalizar',
+    escenario: 'Sacar el corporativo regresa a la ventana principal',
+    semilla: 'corporativo-incompleto',
+    ruta: '/surtido',
+    pasos: ['1002 es corporativo con orden de compra e incompleto.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
+    esperado: 'Regresa a la ventana principal sin 1002 y tiene que volver a elegir "Finalizar surtido".',
   },
   {
     id: 'orden-completo',
@@ -1127,12 +1403,16 @@ const CASOS_HH: Caso[] = [
     id: 'tres-corporativos',
     cambio: 'cierre',
     requisito: 'La ronda se queda sin pedidos',
-    escenario: 'Se sacan los tres corporativos de la ronda',
+    escenario: 'Se sacan corporativos hasta quedar uno',
     semilla: 'tres-corporativos',
     ruta: '/surtido',
-    pasos: ['1001, 1002 y 1003 son corporativos con orden de compra e incompletos.', 'Repite tres veces: ⋮ → "Finalizar surtido" y ✓ para sacar el pedido.'],
+    pasos: [
+      '1001, 1002 y 1003 son corporativos con orden de compra e incompletos.',
+      'Dos veces: ⋮ → "Finalizar surtido" y ✓ para sacar el pedido (sale 1001 y luego 1002).',
+      'Con 1003 solo, ⋮ → "Finalizar surtido" y ✓ para sacarlo también.',
+    ],
     esperado:
-      'Al sacar el tercero la ronda se queda sin pedidos: la tarea se cancela, sale el aviso de que la ronda ya no tiene pedidos y vuelve a la asignación de tareas. (El texto del aviso es provisional: la spec no lo cita.)',
+      '1003 sigue como pedido individual (sin tarjetas) y la tarea no se cancela. Al sacarlo también sale "Pedido retirado de la ronda" y regresa, como la canónica "Sacar el pedido de la ronda", no "Ronda sin pedidos".',
   },
   {
     id: 'todos-cancelados',
@@ -1141,18 +1421,19 @@ const CASOS_HH: Caso[] = [
     escenario: 'Se cancelan todos los pedidos de la ronda',
     semilla: 'todos-cancelados',
     ruta: '/surtido',
-    pasos: ['Los tres pedidos quedaron cancelados.', 'Repite tres veces: ⋮ → "Finalizar surtido" y "Aceptar" en "Pedido cancelado".'],
-    esperado: 'La ronda se queda sin pedidos, la tarea se cancela y no se registra ningún surtido: sale el aviso de la ronda sin pedidos y vuelve a la asignación de tareas.',
+    pasos: ['Los tres pedidos quedaron cancelados.', 'Toca ⋮ → "Finalizar surtido" y acepta los tres "Pedido cancelado", que salen seguidos.', 'En "Ronda sin pedidos" toca "Aceptar".'],
+    esperado:
+      '"Ronda sin pedidos" ("La ronda ya no tiene pedidos por surtir y su tarea se canceló."); la tarea y las que dependen de ella se cancelan, no se registra ningún surtido y con "Aceptar" vuelve a la asignación de tareas.',
   },
   {
-    id: 'queda-uno-tras-sacar',
+    id: 'todo-negado',
     cambio: 'cierre',
     requisito: 'La ronda se queda sin pedidos',
-    escenario: 'Queda un pedido tras sacar los demás',
-    semilla: 'dos-corporativos',
+    escenario: 'Todo negado',
+    semilla: 'todo-negado',
     ruta: '/surtido',
-    pasos: ['1002 y 1003 son corporativos e incompletos.', 'Dos veces: ⋮ → "Finalizar surtido" y ✓ para sacar el pedido.'],
-    esperado: 'Queda solo 1001: la ronda sigue abierta con 1001 y la tarea no se cancela.',
+    pasos: ['La ronda lleva 1001, 1002 y 1003 y todas las partidas están negadas salvo 2010000 de 1003.', 'Abre el detalle de 2010000 y niégalo con un motivo.'],
+    esperado: 'Al finalizar sale "Ronda sin pedidos", la tarea se cancela, no se registra surtido como completado y vuelve a la asignación de tareas.',
   },
   {
     id: 'sacar-sin-supervision',
@@ -1196,6 +1477,21 @@ const CASOS_HH: Caso[] = [
     codigos: [c('1394010')],
   },
   {
+    id: 'queda-un-pedido-individual',
+    cambio: 'cierre',
+    requisito: 'Alcance de la ronda de un solo pedido',
+    escenario: 'Queda un pedido: voz, salida y cierre individuales',
+    semilla: 'dos-corporativos',
+    ruta: '/surtido',
+    pasos: [
+      'La ronda empezó con 1001, 1002 y 1003; 1002 y 1003 son corporativos e incompletos.',
+      'Dos veces: ⋮ → "Finalizar surtido" y ✓ para sacar el pedido.',
+      'Toca ⋮ → "Repetir audio"; luego toca "Menú" y revisa la confirmación (toca "Cancelar"); luego finaliza.',
+    ],
+    esperado:
+      `La voz dice "Pedido 1001, …"; la confirmación de salida es la de hoy, sin "Se verán afectados los {n} pedidos de la ronda", y la finalización es la de un solo pedido. ${VOZ}`,
+  },
+  {
     id: 'codigo-pasa-siguiente',
     cambio: 'cierre',
     requisito: 'Aviso de cambio de pedido de un código',
@@ -1226,7 +1522,8 @@ const CASOS_HH: Caso[] = [
     semilla: 'cierra-pedido',
     ruta: '/surtido',
     pasos: ['A 1001 solo le falta una partida (1394010).', ESCANEA('1394010', 1)],
-    esperado: '"Pedido completado" y, debajo, "Continúa con" la letra del contenedor, el número y el cliente del siguiente pedido: B · 1002 y su cliente.',
+    esperado:
+      '"Pedido completado": "Terminaste el pedido 1001 (contenedor A)." y, debajo, "Continúa con" / "B · Pedido 1002" / "51077 · REFACCIONARIA LA ÚNICA", con el botón "Continuar".',
     codigos: [c('1394010')],
   },
   {
@@ -1239,6 +1536,18 @@ const CASOS_HH: Caso[] = [
     pasos: ['La última partida pendiente de 1001 es 0486600 (10 de 11), que 1002 también pide.', 'Pega la etiqueta de 1 pieza de 0486600.'],
     esperado: 'Sale solo "Pedido completado", no "Pedido surtido".',
     codigos: [e18('0486600', 1)],
+  },
+  {
+    id: 'completa-ultimo-pedido',
+    cambio: 'cierre',
+    requisito: 'Aviso de pedido completado',
+    escenario: 'Se completa el último pedido',
+    semilla: 'cierra-ronda',
+    ruta: '/surtido',
+    pasos: ['1001 y 1002 ya están completos y a 1003 solo le falta una partida.', ESCANEA('2010000', 1), 'Toca ✓ (Aceptar).'],
+    esperado:
+      'No sale "Pedido completado": sale directamente, como hoy, "Haz surtido el total de productos solicitados ¿Deseas finalizar la ronda?" con "Cancelar" (✕) y "Aceptar" (✓); al aceptar se finaliza la ronda con todos sus pedidos.',
+    codigos: [c('2010000')],
   },
   {
     id: 'cancelado-no-cambia-listado',
@@ -1282,6 +1591,78 @@ const CASOS_HH: Caso[] = [
     ruta: '/surtido',
     pasos: [ESCANEA('2010000', 1), 'Acepta "Pedido cancelado".', 'Toca "Finalizar surtido" y confirma con ✓.'],
     esperado: 'La ronda se cierra con 1001 y 1003, y 1002 no se registra: sale "Surtido finalizado".',
+    codigos: [c('2010000')],
+  },
+  {
+    id: 'dos-cancelados',
+    cambio: 'cierre',
+    requisito: 'Pedido cancelado durante el surtido',
+    escenario: 'Dos cancelados en el mismo intento',
+    semilla: 'dos-cancelados',
+    ruta: '/surtido',
+    pasos: ['La ronda lleva 1001, 1002 y 1003 y quedaron cancelados 1002 y 1003.', 'Toca ⋮ → "Finalizar surtido" y acepta los avisos.'],
+    esperado:
+      '"Pedido cancelado" de 1002 y, al aceptar, enseguida el de 1003, sin volver a la ventana entre uno y otro; después vuelve a la ventana con 1001, que sigue como pedido individual (sin tarjetas).',
+  },
+  {
+    id: 'falla-comprobar-cancelados',
+    cambio: 'cierre',
+    requisito: 'Pedido cancelado durante el surtido',
+    escenario: 'Falla la comprobación de cancelados',
+    semilla: 'falla-cancelados',
+    ruta: '/surtido',
+    pasos: ['El servicio que dice qué pedidos están cancelados falla.', ESCANEA('2010000', 1)],
+    esperado:
+      'Sale la alerta de error de la app, la ronda no se finaliza y sigue en el listado; con "Finalizar surtido" puede volver a intentarlo (en la demo el reintento ya responde).',
+    codigos: [c('2010000')],
+  },
+
+  /* ---- Ronda ya concluida por otro usuario (clarificación 31) ---- */
+  {
+    id: 'dos-hh',
+    cambio: 'cierre',
+    requisito: 'Ronda ya concluida por otro usuario',
+    escenario: 'Dos HH con la misma ronda',
+    semilla: 'concluida-por-otro',
+    ruta: '/surtido',
+    pasos: ['Otro usuario ya finalizó la misma ronda.', ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓.'],
+    esperado:
+      '"Esta tarea ya fue concluida por otro usuario.", sin registrar nada; cuentan los registros del primero y, al cerrar el error, vuelve a la asignación de tareas sin desvincular.',
+    codigos: [c('2010000')],
+  },
+
+  /* ---- Servicio cierre-ronda-surtido (assortment-task, specs-servicio): lo que se ve en la HH ---- */
+  {
+    id: 'servicio-todos-cancelados',
+    cambio: 'cierre',
+    requisito: 'Ronda sin pedidos',
+    escenario: 'Ronda multipedido V2 con todos los pedidos cancelados',
+    semilla: 'todos-cancelados',
+    ruta: '/surtido',
+    pasos: ['Ronda multipedido V2 de 3 pedidos, los tres cancelados.', 'Toca ⋮ → "Finalizar surtido" y acepta los tres "Pedido cancelado".'],
+    esperado:
+      'La HH ve "Ronda sin pedidos", sin error. En el servidor las tareas de la ronda quedan canceladas, no se registra surtido y la respuesta dice "ronda cancelada" (la demo no muestra la respuesta del servidor).',
+  },
+  {
+    id: 'servicio-todo-negado',
+    cambio: 'cierre',
+    requisito: 'Ronda sin pedidos',
+    escenario: 'Ronda multipedido V2 con todo negado',
+    semilla: 'todo-negado',
+    ruta: '/surtido',
+    pasos: ['Ronda multipedido V2 de 3 pedidos; solo falta negar 2010000 de 1003.', 'Abre el detalle de 2010000 y niégalo con un motivo.'],
+    esperado:
+      'La HH ve "Ronda sin pedidos", sin error. En el servidor las tareas quedan canceladas, no se registra surtido como completado y la respuesta dice "ronda cancelada".',
+  },
+  {
+    id: 'servicio-con-surtido',
+    cambio: 'cierre',
+    requisito: 'Ronda sin pedidos',
+    escenario: 'Ronda multipedido V2 con surtido',
+    semilla: 'cierra-ronda',
+    ruta: '/surtido',
+    pasos: ['Ronda multipedido V2 con piezas surtidas.', ESCANEA('2010000', 1), 'En "Finalizar surtido" toca ✓.'],
+    esperado: 'La ronda se cierra como hoy: sale "Surtido finalizado", no "Ronda sin pedidos" (la respuesta del servidor no dice "ronda cancelada").',
     codigos: [c('2010000')],
   },
 
@@ -1427,6 +1808,57 @@ const CASOS_HH: Caso[] = [
     esperado: 'Aparecen juntos al final de la sección, de menor a mayor (1365800, 2010000), después de los códigos que sí tienen familia.',
   },
   {
+    id: 'familia-relleno',
+    cambio: 'imagen-familia',
+    requisito: 'Orden dentro de la agrupación por familia',
+    escenario: 'Familia con texto de relleno',
+    semilla: 'familia-relleno',
+    ruta: '/surtido',
+    pasos: ['3001 tiene la familia "Filtro", 2500 llega con la familia nula y 1500 con el texto de relleno "SIN FAMILIA". La agrupación está activa.'],
+    esperado: 'Las filas quedan 3001, 1500, 2500: el filtro primero y los dos sin familia juntos al final, de menor a mayor.',
+  },
+  {
+    id: 'tarea-sin-familias',
+    cambio: 'imagen-familia',
+    requisito: 'Agrupación por familia',
+    escenario: 'La tarea llega sin familias',
+    semilla: 'sin-dato-familia',
+    ruta: '/surtido',
+    pasos: ['Bandera_AgrupacionFamiliaEnHH está activa (y Bandera_UbicacionesUDN también) y el servicio entrega la tarea sin el dato de familia.'],
+    esperado:
+      'Las filas salen en el orden actual, por ubicación: 1394010, 2012000, 0486600, 1365800, 2389475, 1978000 y 2010000; sin grupos de familia ni aviso, y el surtido sigue normal.',
+  },
+  {
+    id: 'ninguna-familia',
+    cambio: 'imagen-familia',
+    requisito: 'Agrupación por familia',
+    escenario: 'Ningún producto con familia',
+    semilla: 'ninguna-familia',
+    ruta: '/surtido',
+    pasos: ['Las dos banderas (agrupación y ubicaciones) están activas y el servicio entrega el dato, pero ningún producto de la tarea tiene familia.'],
+    esperado: 'Todos van al grupo sin familia y la sección sale ordenada por código, no por ubicación: 0486600, 1365800, 1394010, 1978000, 2010000, 2012000 y 2389475.',
+  },
+  {
+    id: 'clasificacion-incompleta',
+    cambio: 'imagen-familia',
+    requisito: 'Agrupación por familia',
+    escenario: 'Producto con la clasificación incompleta',
+    semilla: 'clasificacion-incompleta',
+    ruta: '/surtido',
+    pasos: ['La agrupación está activa y 0486600 tiene incompleta su clasificación en el catálogo (llega sin familia).'],
+    esperado: '0486600 va al final de su sección con los productos sin familia, ordenado por código: 2389475, 1365800, 1394010, 1978000, 2010000, 2012000 y 0486600.',
+  },
+  {
+    id: 'tarea-no-carga',
+    cambio: 'imagen-familia',
+    requisito: 'Agrupación por familia',
+    escenario: 'La tarea no se puede cargar',
+    semilla: 'falla-carga',
+    ruta: '/surtido',
+    pasos: ['La agrupación está activa y falla la consulta de los productos de la tarea al abrir el listado.'],
+    esperado: 'Sale el error de carga de hoy ("Lo sentimos, no ha sido posible cargar la información necesaria…") y el listado no se abre.',
+  },
+  {
     id: 'familia-sin-bandera',
     cambio: 'imagen-familia',
     requisito: 'Bandera de agrupación por familia',
@@ -1450,11 +1882,15 @@ const CASOS_HH: Caso[] = [
 
 /** Semilla y pasos de los escenarios del armado que se validan en el listado de la HH. */
 const ARMADO_EN_LISTADO: Record<string, { semilla: string; pasos: string[]; esperado: string }> = {
-  'corporativo-retirado': {
-    semilla: 'corporativo-incompleto',
-    pasos: ['1002 es corporativo con orden de compra e incompleto.', 'Toca ⋮ → "Finalizar surtido" y toca ✓ para sacarlo.'],
+  'retencion-durante-surtido': {
+    semilla: 'cierra-ronda',
+    pasos: [
+      'La ronda lleva 1001, 1002 y 1003 y 1002 se retuvo mientras se surte (la retención no se ve en la HH).',
+      'Surte lo que falta: pega 2010000 en el lector (o tócalo en ⌨ y tecléalo), captura 1 y acepta.',
+      'En "Finalizar surtido" toca ✓.',
+    ],
     esperado:
-      '"Pedido retirado de la ronda" y la HH sigue sin 1002. Que quede registrado a qué grupo perteneció y con qué órdenes es del servidor: no se ve en la demo.',
+      'La ronda se finaliza como hoy (toast "Surtido finalizado") y el listado no muestra ningún aviso de retención.',
   },
   'cancelacion-durante-surtido': {
     semilla: 'cancelado-al-finalizar',
@@ -1464,12 +1900,15 @@ const ARMADO_EN_LISTADO: Record<string, { semilla: string; pasos: string[]; espe
   },
 };
 
-/** Escenarios del armado: se validan en el simulador (`#/armado/<id>`), salvo el corporativo retirado. */
+/**
+ * Escenarios del armado (con los deltas del servicio) y de la configuración del armado: se validan en el simulador
+ * (`#/armado/<id>`), salvo los que ocurren con la ronda ya en surtido, que se validan en el listado de la HH.
+ */
 const CASOS_ARMADO: Caso[] = PRESETS_ARMADO.map((p) =>
   p.enListado && ARMADO_EN_LISTADO[p.id]
     ? {
         id: `armado-${p.id}`,
-        cambio: 'armado',
+        cambio: p.cambio ?? 'armado',
         requisito: p.requisito,
         escenario: p.escenario,
         ruta: '/surtido',
@@ -1477,7 +1916,7 @@ const CASOS_ARMADO: Caso[] = PRESETS_ARMADO.map((p) =>
       }
     : {
         id: `armado-${p.id}`,
-        cambio: 'armado',
+        cambio: p.cambio ?? 'armado',
         requisito: p.requisito,
         escenario: p.escenario,
         armado: p.id,
