@@ -252,8 +252,16 @@ export function SurtidoRonda() {
       }
       const cancelado = r.pedidos.findIndex((p) => simulacion.cancelados.includes(p.id));
       if (cancelado >= 0) return setAviso({ tipo: 'cancelado', idx: cancelado });
-      // Todas las partidas negadas: la ronda se queda sin pedidos por surtir (La ronda se queda sin pedidos).
-      if (r.pedidos.every((p) => p.partidas.every((x) => x.motivoNegacion !== null))) return setAviso({ tipo: 'sin-pedidos' });
+    }
+    // Una tarea que llegó con dos o más pedidos y ya no tiene ninguno por surtir porque todas sus partidas se negaron
+    // (también si solo queda uno tras los cancelados): "Ronda sin pedidos", sin registrar surtido (La ronda se queda
+    // sin pedidos, texto literal del requisito).
+    if (
+      tareaOriginal.ronda.pedidos.length >= 2 &&
+      r.pedidos.length > 0 &&
+      r.pedidos.every((p) => p.partidas.every((x) => x.motivoNegacion !== null))
+    ) {
+      return setAviso({ tipo: 'sin-pedidos' });
     }
     const corp = corporativoIncompleto(r);
     if (corp >= 0) return setAviso({ tipo: 'corporativo', idx: corp });

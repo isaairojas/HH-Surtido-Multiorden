@@ -58,10 +58,11 @@ import {
   proximaPartidaPara,
   rondaReducer,
   statusDeEstado,
+  statusProducto,
   type RechazoSurtido,
 } from '../../domain/ronda';
 import { useStore } from '../../store/AppStore';
-import { callar, debeLeer } from '../../domain/voz';
+import { callar, debeLeer, resumenVoz } from '../../domain/voz';
 import { fallaUnaVez } from '../../domain/simulacion';
 import { CambioPedidoModal, ConfirmarCorreccionModal, NegarProductoModal } from './overlays/SurtidoModals';
 import { AvisoModal, ConNegritas, TextoAviso } from './overlays/Avisos';
@@ -105,12 +106,6 @@ export function DetalleProducto() {
   // Pedido que corrige el botón: el en curso si tiene piezas; si está en 0, el anterior con piezas.
   const aCorregir = partidaACorregir(ronda.ronda, codigo);
 
-  // Ruta con un código que no vive en la ronda: se vuelve a la lista en vez de romper.
-  if (!vista) {
-    navigate('/surtido', { replace: true });
-    return null;
-  }
-
   const partidaDestino = destino ? partidaEn(ronda.ronda, destino) : null;
   const pedidoDestino = destino ? ronda.ronda.pedidos[destino.pedidoIdx] : null;
   const surtidoGuardado = partidaDestino?.surtido ?? 0;
@@ -121,6 +116,12 @@ export function DetalleProducto() {
    */
   const [cantidad, setCantidad] = useState(surtidoGuardado);
   useEffect(() => setCantidad(surtidoGuardado), [pedidoDestino?.id, surtidoGuardado]);
+
+  // Ruta con un código que no vive en la ronda: se vuelve a la lista en vez de romper (después de los hooks).
+  useEffect(() => {
+    if (!vista) navigate('/surtido', { replace: true });
+  }, [vista, navigate]);
+  if (!vista) return null;
 
   const irAlListado = () => navigate('/surtido');
 
@@ -148,8 +149,14 @@ export function DetalleProducto() {
     const rechazo = evaluarCantidadDetalle(partidaDestino, cantidad);
     if (rechazo) return rechazar(rechazo);
     const accion = { type: 'fijarCantidad', codigo, pedidoId: pedidoDestino.id, cantidad } as const;
-    const c = cambioDePedido(ronda.ronda, rondaReducer(ronda, accion).ronda, codigo);
+    const despues = rondaReducer(ronda, accion).ronda;
+    const c = cambioDePedido(ronda.ronda, despues, codigo);
     dispatch(accion);
+    // Guía por voz: el resumen actualizado al completar un producto, también desde el detalle.
+    const ahora = productoVista(despues, codigo);
+    if (debeLeer(simulacion) && ahora && statusProducto(ahora) === 'completado' && statusProducto(vista) !== 'completado') {
+      leer(resumenVoz(despues));
+    }
     sonar('ok');
     setUltimoEscaneo({ codigo, pedidoId: pedidoDestino.id });
     // Si el pedido quedó completo, avisa "Pedido completado" en el listado, que sustituye a "Pedido surtido".

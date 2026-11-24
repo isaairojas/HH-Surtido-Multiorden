@@ -322,7 +322,7 @@ export function PedidoCompletadoModal({
           Terminaste el pedido <b>{pedidoCompletado}</b> (contenedor {letraCompletado}).
         </p>
 
-        {siguientePedido ? (
+        {siguientePedido && (
           <div className={styles.transicion}>
             <span className={styles.transicionEtiqueta}>Continúa con</span>
             <span className={styles.transicionPedido}>
@@ -330,8 +330,6 @@ export function PedidoCompletadoModal({
             </span>
             {siguienteCliente && <span className={styles.transicionCliente}>{siguienteCliente}</span>}
           </div>
-        ) : (
-          <p className={styles.text}>No quedan pedidos pendientes en la ronda.</p>
         )}
 
         {/* Botón con texto en vez del ✓ de los modales de Figma: el aviso informa a qué pedido se pasa. */}
