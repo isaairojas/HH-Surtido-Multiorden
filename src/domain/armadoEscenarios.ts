@@ -6,7 +6,8 @@
  * pruebas y la pantalla, que marca si el simulador coincide con el spec.
  *
  * "Cancelación durante el surtido" y "Retención durante el surtido" (Requirement: Pedidos retenidos o cancelados)
- * ocurren durante el surtido de una ronda ya armada, así que se validan en el listado de la HH (`enListado`).
+ * ocurren durante el surtido de una ronda ya armada y se ven al finalizarla, así que se validan en la demo de revisión
+ * multipedido, que tiene la finalización del surtido (`enListado`).
  */
 import {
   armarCola,
@@ -80,7 +81,7 @@ export type PresetArmado = {
   cola: PedidoCola[];
   config: ConfigSucursal;
   comprobar: Comprobacion;
-  /** El escenario se valida en el surtido de la HH, no en el armado. */
+  /** El escenario se valida al finalizar el surtido en la HH (demo de revisión multipedido), no en el armado. */
   enListado?: boolean;
   /** Con `enListado`: qué pasa en el listado y dónde verlo. */
   textoListado?: string;
@@ -601,7 +602,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     comprobar: {},
     enListado: true,
     textoListado:
-      'La cancelación llega con la ronda ya armada y en surtido (cambio 2026-11-05-multipedido-surtido-listado-cierre · Pedido cancelado durante el surtido). Ábrelo desde el panel de escenarios de la demo, en los casos del pedido cancelado: el listado no cambia, al finalizar se avisa y la ronda se cierra sin el cancelado.',
+      'La cancelación llega con la ronda ya armada y en surtido (cambio 2026-11-05-multipedido-surtido-listado-cierre · Pedido cancelado durante el surtido). Se valida al finalizar el surtido, en la demo de revisión multipedido (https://isaairojas.github.io/Revisi-n-multipedido/), en los casos del pedido cancelado: el listado no cambia, al finalizar se avisa y la ronda se cierra sin el cancelado.',
   },
 
   /* ---- Tope de partidas por ronda ---- */
@@ -983,7 +984,7 @@ export const PRESETS_ARMADO: PresetArmado[] = [
     comprobar: {},
     enListado: true,
     textoListado:
-      'La retención llega con la ronda ya armada y en surtido. El listado V2 no usa el indicador de retenidos al guardar (clarificación 47): la ronda se finaliza como cualquier otra, sin aviso. Ábrelo desde el panel de escenarios de la demo y finaliza la ronda: no aparece ningún aviso de retención.',
+      'La retención llega con la ronda ya armada y en surtido. El listado V2 no usa el indicador de retenidos al guardar (clarificación 47): la ronda se finaliza como cualquier otra, sin aviso. Se valida al finalizar el surtido, en la demo de revisión multipedido (https://isaairojas.github.io/Revisi-n-multipedido/): al finalizar la ronda no aparece ningún aviso de retención.',
   },
   {
     id: 'pedido-cero-partidas',

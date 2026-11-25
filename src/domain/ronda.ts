@@ -22,8 +22,8 @@
  *   - Negación (2026-10-26, sustituye la regla de un solo pedido del 2026-10-21): se niegan el
  *     pedido en proceso y todos los posteriores que tengan el código, retirando lo ya surtido.
  *     No hay negación parcial: el surtidor no decide qué pedido se queda la mercancía.
- *   - Promociones AxB (2026-10-27): se evalúan por pedido con la regla del V2 real
- *     (`getPendingPromotionProducts`) y solo bloquean el cierre de la ronda. Ver `promocionesPendientes`.
+ *   - Promociones AxB (2026-10-27): solo bloquean el cierre de la ronda, que está en la demo de revisión
+ *     multipedido (separación del 2026-11-25), junto con el resto de la finalización del surtido.
  *   - Corrección en escalera (2026-11-09, clarify 9-17): "Corregir {letra}" deja en 0, con confirmación, el
  *     último pedido con piezas del código; con él en 0, se corrige el anterior, hasta el primero. Ver
  *     `partidaACorregir`.
@@ -112,11 +112,6 @@ export type RondaAction =
    * (QR de etiqueta única validado), la relaciona con ese pedido.
    */
   | { type: 'surtirPorCodigo'; codigo: string; cantidad: number; etiqueta?: string }
-  /**
-   * Saca el pedido de la ronda (corporativo con orden de compra incompleto al finalizar).
-   * SDD 2026-10-26-multipedido-surtido-listado · Sacar el pedido de la ronda.
-   */
-  | { type: 'retirarPedido'; pedidoId: string }
   /** Sustituye el estado completo: salir del listado descarta todo y la tarea vuelve a como llegó. */
   | { type: 'cargar'; estado: RondaState }
   /**
@@ -134,11 +129,6 @@ export type RondaAction =
    * SDD 2026-10-26-multipedido-surtido-listado · Negar producto desde el detalle.
    */
   | { type: 'negar'; codigo: string; motivo: string }
-  /**
-   * Niega la promoción en cada pedido donde quedó incompleta, retirando lo surtido.
-   * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda.
-   */
-  | { type: 'negarPromocion'; promocionId: string }
   | { type: 'reiniciar' };
 
 /**
@@ -151,9 +141,6 @@ export const MOTIVOS_NEGACION: string[] = [
   'Producto incorrecto',
   'Ubicación incorrecta',
 ];
-
-/** Motivo con el que se niegan las partidas de una promoción retirada (reasonID 6 en el V2 real). */
-export const MOTIVO_PROMOCION = 'Promoción incompleta';
 
 /** Copia profunda: el estado inicial nunca comparte partidas con el mock. */
 function clonar(ronda: Ronda): Ronda {
@@ -663,98 +650,6 @@ export function piezasEn(p: Pedido, codigo: string): number {
 }
 
 /* ------------------------------------------------------------------ *
- * Promociones AxB
- * ------------------------------------------------------------------ */
-
-export type PartidaPromocion = { codigo: string; descripcion: string; surtido: number; solicitado: number; negado: boolean };
-
-export type PromocionPendiente = {
-  promocion: Promocion;
-  /** Solo los pedidos donde la promoción quedó incompleta, en el orden de la ronda. */
-  pedidos: { pedidoId: string; ordenPedido: number; contenedor: string; partidas: PartidaPromocion[] }[];
-};
-
-/**
- * Regla de `getPendingPromotionProducts` del V2 real, aplicada a las partidas de una promoción
- * dentro de un pedido: ya negada entera no cuenta; con algún código negado, o con todos
- * iniciados y alguno incompleto, la promoción está pendiente.
- */
-function promocionIncompleta(partidas: PartidaPedido[]): boolean {
-  if (partidas.every((p) => p.motivoNegacion)) return false;
-  const conNegado = partidas.some((p) => p.motivoNegacion);
-  const vivas = partidas.filter((p) => !p.motivoNegacion);
-  if (!conNegado && !vivas.every((p) => p.surtido > 0)) return false;
-  return conNegado || vivas.some((p) => p.surtido < p.solicitado);
-}
-
-/**
- * Promociones que impiden cerrar la ronda, agrupadas por id entre pedidos. Por el orden
- * consecutivo del surtido, el primer pedido puede completar la promoción y los siguientes no:
- * solo se listan los pedidos donde quedó incompleta.
- * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda.
- */
-export function promocionesPendientes(r: Ronda): PromocionPendiente[] {
-  const porId = new Map<string, PromocionPendiente>();
-  r.pedidos.forEach((pedido, ordenPedido) => {
-    const ids = new Set(pedido.partidas.flatMap((p) => (p.promocion ? [p.promocion.id] : [])));
-    for (const id of ids) {
-      const partidas = pedido.partidas.filter((p) => p.promocion?.id === id);
-      if (!promocionIncompleta(partidas)) continue;
-      const pendiente = porId.get(id) ?? { promocion: partidas[0].promocion!, pedidos: [] };
-      pendiente.pedidos.push({
-        pedidoId: pedido.id,
-        ordenPedido,
-        contenedor: letraDe(r, ordenPedido),
-        partidas: partidas.map((p) => ({
-          codigo: p.codigo,
-          descripcion: p.descripcion,
-          surtido: p.surtido,
-          solicitado: p.solicitado,
-          negado: p.motivoNegacion !== null,
-        })),
-      });
-      porId.set(id, pendiente);
-    }
-  });
-  return [...porId.values()];
-}
-
-/* ------------------------------------------------------------------ *
- * Finalizar el surtido (SDD 2026-11-05-multipedido-surtido-listado-cierre · Bloqueos y fallas al finalizar)
- * ------------------------------------------------------------------ */
-
-/** Hay partidas en 0 sin negar: al finalizar de forma manual se pide negarlas primero. */
-export function hayCodigosSinSurtir(r: Ronda): boolean {
-  return r.pedidos.some((p) => p.partidas.some((x) => x.motivoNegacion === null && x.surtido === 0));
-}
-
-/** Pedidos con alguna partida surtida parcialmente, en el orden de la ronda. */
-export function pedidosConParciales(r: Ronda): { pedido: Pedido; idx: number }[] {
-  return r.pedidos
-    .map((pedido, idx) => ({ pedido, idx }))
-    .filter(({ pedido }) => pedido.partidas.some((x) => estadoPartida(x) === 'parcial'));
-}
-
-/**
- * Códigos con alguna partida surtida parcialmente, una vez cada uno y con su avance total y por contenedor,
- * como la fila del listado (revisión del 2026-11-09: "agrúpalos como en la ventana principal"). El orden lo
- * pone la pantalla, igual que el listado (por familia si la bandera está activa).
- */
-export function codigosParciales(r: Ronda): ProductoVista[] {
-  return productosVista(r).filter((v) => v.presencias.some((p) => p.estado === 'parcial'));
-}
-
-/** Primer pedido corporativo con orden de compra que sigue incompleto (se ofrece sacarlo de la ronda). */
-export function corporativoIncompleto(r: Ronda): number {
-  return r.pedidos.findIndex((p) => p.corporativoOC && !pedidoCompleto(p));
-}
-
-/** La ronda puede cerrarse: todo resuelto y sin promociones incompletas. */
-export function rondaFinalizable(r: Ronda): boolean {
-  return rondaCompleta(r) && promocionesPendientes(r).length === 0;
-}
-
-/* ------------------------------------------------------------------ *
  * Reducer
  * ------------------------------------------------------------------ */
 
@@ -796,29 +691,6 @@ export function rondaReducer(s: RondaState, a: RondaAction): RondaState {
         (acc, loc) => conPartida(acc, loc, { ...partidaEn(acc.ronda, loc), surtido: 0, motivoNegacion: a.motivo }),
         s,
       );
-    }
-    case 'negarPromocion': {
-      // Solo los pedidos donde quedó incompleta: el que la completó conserva lo surtido.
-      const pendiente = promocionesPendientes(s.ronda).find((p) => p.promocion.id === a.promocionId);
-      if (!pendiente) return s;
-      const afectados = new Set(pendiente.pedidos.map((p) => p.pedidoId));
-      const pedidos = s.ronda.pedidos.map((pedido) =>
-        !afectados.has(pedido.id)
-          ? pedido
-          : {
-              ...pedido,
-              partidas: pedido.partidas.map((x) =>
-                x.promocion?.id !== a.promocionId || x.motivoNegacion ? x : { ...x, surtido: 0, motivoNegacion: MOTIVO_PROMOCION },
-              ),
-            },
-      );
-      return { ...s, ronda: { ...s.ronda, pedidos } };
-    }
-    case 'retirarPedido': {
-      // Solo sale el documento corporativo: los demás pedidos conservan lo surtido y su letra, y no entra
-      // ningún otro pedido en su lugar (la ronda es la que calculó el sistema al tomar la tarea).
-      if (!s.ronda.pedidos.some((p) => p.id === a.pedidoId)) return s;
-      return { ...s, ronda: { ...s.ronda, pedidos: s.ronda.pedidos.filter((p) => p.id !== a.pedidoId) } };
     }
     case 'cargar':
       return a.estado.etiquetas ? { ronda: clonar(a.estado.ronda), etiquetas: [...a.estado.etiquetas] } : { ronda: clonar(a.estado.ronda) };

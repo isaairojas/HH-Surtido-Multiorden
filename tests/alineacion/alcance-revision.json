@@ -1,0 +1,112 @@
+{
+  "nota": "Escenarios de las specs de surtido que se ven en la demo de revisión multipedido (https://github.com/isaairojas/Revisi-n-multipedido): la finalización del surtido de la ronda, que sigue a la revisión, la facturación y el embarque. La demo de surtido (https://github.com/isaairojas/HH-Surtido-Multiorden) los deja fuera; la de revisión solo cubre estos. Separación del 2026-11-25.",
+  "requisitos": [
+    {
+      "cambio": "listado",
+      "requisito": "Finalizar el surtido del pedido"
+    },
+    {
+      "cambio": "listado",
+      "requisito": "Sacar el pedido de la ronda"
+    },
+    {
+      "cambio": "listado",
+      "requisito": "Promoción incompleta al finalizar la ronda"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Bloqueos y fallas al finalizar"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Orden de los avisos al finalizar"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Continuación tras un aviso al finalizar"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "La ronda se queda sin pedidos"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Ronda ya concluida por otro usuario"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Ronda sin pedidos"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Aviso de surtido finalizado"
+    }
+  ],
+  "escenarios": [
+    {
+      "cambio": "cierre",
+      "requisito": "Salir del listado deshace el vínculo",
+      "escenario": "Salida después de sacar un pedido"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Salir del listado deshace el vínculo",
+      "escenario": "Salida después de aceptar un cancelado"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Permisos de las acciones del listado",
+      "escenario": "Sacar un pedido sin rol de supervisión"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Alcance de la ronda de un solo pedido",
+      "escenario": "Sin avisos de cambio de pedido"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Alcance de la ronda de un solo pedido",
+      "escenario": "Queda un pedido: voz, salida y cierre individuales"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Aviso de pedido completado",
+      "escenario": "Se completa el último pedido"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Pedido cancelado durante el surtido",
+      "escenario": "Un pedido cancelado al intentar finalizar"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Pedido cancelado durante el surtido",
+      "escenario": "Cancelado en la finalización automática"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Pedido cancelado durante el surtido",
+      "escenario": "La ronda se cierra sin el cancelado"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Pedido cancelado durante el surtido",
+      "escenario": "Dos cancelados en el mismo intento"
+    },
+    {
+      "cambio": "cierre",
+      "requisito": "Pedido cancelado durante el surtido",
+      "escenario": "Falla la comprobación de cancelados"
+    },
+    {
+      "cambio": "armado",
+      "requisito": "Pedidos retenidos o cancelados",
+      "escenario": "Cancelación durante el surtido"
+    },
+    {
+      "cambio": "armado",
+      "requisito": "Pedidos retenidos o cancelados",
+      "escenario": "Retención durante el surtido"
+    }
+  ]
+}

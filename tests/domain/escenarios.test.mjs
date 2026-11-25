@@ -14,8 +14,6 @@ import { SIMULACION_INICIAL } from '../../src/domain/simulacion.ts';
 import { interpretarLectura } from '../../src/domain/lector.ts';
 import {
   cambioDePedido,
-  codigosParciales,
-  corporativoIncompleto,
   evaluarSurtido,
   letraDe,
   ordenarListado,
@@ -24,7 +22,6 @@ import {
   pedidoCompleto,
   productosVista,
   productoVista,
-  promocionesPendientes,
   rondaReducer,
 } from '../../src/domain/ronda.ts';
 import { E1, E2, ESCENARIOS } from '../../src/navigation/escenarios.ts';
@@ -142,41 +139,6 @@ test('Aviso de cambio de pedido: pasa al siguiente con 11 en A; sin otro pedido,
 test('Aviso de pedido completado: 1001 se completa (con 1394010 y con un código compartido)', () => {
   assert.ok(pedidoCompleto(surtir(estado('cierra-pedido'), '1394010', 1).ronda.pedidos[0]));
   assert.ok(pedidoCompleto(surtir(estado('cierra-pedido-compartido'), '0486600', 1).ronda.pedidos[0]));
-});
-
-test('Promoción incompleta · solo en el segundo pedido: "Kit afinación" pendiente en 1002', () => {
-  const p = promocionesPendientes(ronda('promocion'));
-  assert.equal(p.length, 1);
-  assert.equal(p[0].promocion.nombre, 'Kit afinación');
-  assert.deepEqual(p[0].pedidos.map((x) => x.pedidoId), ['1002']);
-  const b = p[0].pedidos[0].partidas.map((x) => `${x.codigo} ${x.negado ? 'Negado' : `${x.surtido} de ${x.solicitado}`}`);
-  assert.deepEqual(b, ['0486600 5 de 5', '2389475 Negado']);
-});
-
-test('Bloqueos · Parciales en varios pedidos: 0486600 "8 de 16" (A 3/11 · B 5/5) y 2389475 "1 de 2" (C 1/2)', () => {
-  const r = ronda('parciales');
-  assert.equal(promocionesPendientes(r).length, 0);
-  const parciales = ordenarListado(codigosParciales(r), { familia: true, ubicaciones: false });
-  assert.deepEqual(
-    parciales.map((v) => `${v.codigo} ${v.surtidoTotal} de ${v.solicitadoTotal} (${desglose(r, v.codigo)})`),
-    ['0486600 8 de 16 (A 3/11 · B 5/5)', '2389475 1 de 2 (C 1/2)'],
-  );
-});
-
-test('Orden de los avisos · La promoción negada sigue con el cierre: 2012000 "4 de 5" (B 3/3 · C 1/2)', () => {
-  const s = estado('promocion-y-parciales');
-  const id = promocionesPendientes(s.ronda)[0].promocion.id;
-  const r = rondaReducer(s, { type: 'negarPromocion', promocionId: id }).ronda;
-  assert.deepEqual(codigosParciales(r).map((v) => `${v.codigo} ${v.surtidoTotal} de ${v.solicitadoTotal} (${desglose(r, v.codigo)})`), [
-    '2012000 4 de 5 (B 3/3 · C 1/2)',
-  ]);
-});
-
-test('Orden de los avisos: el corporativo incompleto es 1002 y hay promoción y parciales detrás', () => {
-  const r = ronda('cierre-en-orden');
-  assert.equal(r.pedidos[corporativoIncompleto(r)].id, '1002');
-  assert.equal(promocionesPendientes(r).length, 1);
-  assert.ok(codigosParciales(r).length > 0);
 });
 
 test('Agrupación por familia: filtros juntos, acentos, la ubicación no ordena, sin familia al final y desactivada', () => {
@@ -300,26 +262,6 @@ test('Corregir · Corregir un pedido con etiquetas únicas: E1 se libera y se vu
   assert.equal(res.tipo, 'surtir');
   const despues = rondaReducer(corregido, { type: 'surtirPorCodigo', codigo: res.codigo, cantidad: res.cantidad, etiqueta: res.etiqueta });
   assert.equal(desglose(despues.ronda, '0486600'), 'A 11/11 · B 5/5 · C 1/3');
-});
-
-test('Promoción · Incompleta sin códigos negados: solo 1002, con el avance de sus dos códigos', () => {
-  const pendientes = promocionesPendientes(ronda('promocion-sin-negados'));
-  assert.equal(pendientes.length, 1);
-  assert.deepEqual(pendientes[0].pedidos.map((p) => p.pedidoId), ['1002']);
-  assert.deepEqual(pendientes[0].pedidos[0].partidas.map((x) => `${x.codigo} ${x.surtido}/${x.solicitado}`), ['0486600 5/5', '2389475 1/2']);
-});
-
-test('Orden de los avisos · Solo códigos en cero: la promoción de 1002 no cuenta como incompleta', () => {
-  assert.equal(promocionesPendientes(ronda('solo-ceros')).length, 0);
-  assert.equal(codigosParciales(ronda('solo-ceros')).length, 0);
-});
-
-test('La ronda se queda sin pedidos · Todo negado: solo falta negar 2010000 de 1003', () => {
-  const r = ronda('todo-negado');
-  const vivas = r.pedidos.flatMap((p) => p.partidas.filter((x) => x.motivoNegacion === null).map((x) => `${p.id} ${x.codigo}`));
-  assert.deepEqual(vivas, ['1003 2010000']);
-  const negado = rondaReducer({ ronda: r }, { type: 'negar', codigo: '2010000', motivo: 'Sin existencia' }).ronda;
-  assert.ok(negado.pedidos.every((p) => p.partidas.every((x) => x.motivoNegacion !== null)));
 });
 
 test('Asignación · solo la ronda que armó el multipedido V2 es ronda V2', async () => {

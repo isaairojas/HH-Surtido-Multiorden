@@ -12,7 +12,6 @@ import assert from 'node:assert/strict';
 import {
   cambioDePedido,
   conteosRonda,
-  MOTIVO_PROMOCION,
   estadoInicial,
   estadoPartida,
   evaluarSurtido,
@@ -21,10 +20,8 @@ import {
   partidasANegar,
   productosVista,
   productoVista,
-  promocionesPendientes,
   proximaPartidaPara,
   rondaCompleta,
-  rondaFinalizable,
   rondaReducer,
   statusProducto,
   transicionDePedido,
@@ -369,52 +366,6 @@ test('sin cambio de destino, o sin destino, no hay aviso', () => {
   // 1978000 solo vive en el 100003: al completarse no hay a dónde pasar.
   const solo = surtir(antes, '1978000', 1);
   assert.equal(cambioDePedido(antes.ronda, solo.ronda, '1978000'), null);
-});
-
-/* ---------------------------------------------------------------- *
- * SDD 2026-10-26-multipedido-surtido-listado · Promoción incompleta al finalizar la ronda
- * ---------------------------------------------------------------- */
-
-/** Todo surtido salvo el limpiador del 100002, negada: su "Kit mantenimiento" queda incompleto. */
-function conPromocionIncompleta() {
-  const s = completarTodo(estadoInicial(RONDA_PRUEBAS), (x, p) => p.id === '100002' && x.codigo === '6200401');
-  return rondaReducer(s, { type: 'negar', codigo: '6200401', motivo: 'Sin existencia' });
-}
-
-test('una promoción completa en el primer pedido e incompleta en el segundo solo lista el segundo', () => {
-  const s = conPromocionIncompleta();
-  assert.equal(partida(s, '100001', '6200401').surtido, 8, 'el 100001 conserva su limpiador');
-  const pend = promocionesPendientes(s.ronda);
-  assert.equal(pend.length, 1);
-  assert.equal(pend[0].promocion.id, 'PROMO-MANTTO');
-  assert.deepEqual(pend[0].pedidos.map((p) => p.pedidoId), ['100002']);
-});
-
-test('con una promoción incompleta la ronda está resuelta pero no se puede finalizar', () => {
-  const s = conPromocionIncompleta();
-  assert.equal(rondaCompleta(s.ronda), true);
-  assert.equal(rondaFinalizable(s.ronda), false);
-});
-
-test('una promoción sin iniciar no está pendiente (la detiene el surtido, no la promoción)', () => {
-  assert.deepEqual(promocionesPendientes(estadoInicial(RONDA_PRUEBAS).ronda), []);
-});
-
-test('negar la promoción retira lo surtido solo en los pedidos donde quedó incompleta', () => {
-  const s = rondaReducer(conPromocionIncompleta(), { type: 'negarPromocion', promocionId: 'PROMO-MANTTO' });
-  const cinta = partida(s, '100002', '1394010');
-  assert.equal(cinta.surtido, 0);
-  assert.equal(cinta.motivoNegacion, MOTIVO_PROMOCION);
-  assert.equal(partida(s, '100002', '6200401').motivoNegacion, 'Sin existencia', 'lo ya negado conserva su motivo');
-  assert.equal(partida(s, '100001', '1394010').surtido, 11, 'el 100001 completó la promoción');
-  assert.equal(partida(s, '100003', '1394010').surtido, 3, 'la cinta sin promoción no se toca');
-  assert.equal(rondaFinalizable(s.ronda), true);
-});
-
-test('negar una promoción que no está pendiente no cambia nada', () => {
-  const s = conPromocionIncompleta();
-  const negada = rondaReducer(s, { type: 'negarPromocion', promocionId: 'PROMO-MANTTO' });
-  assert.deepEqual(rondaReducer(negada, { type: 'negarPromocion', promocionId: 'PROMO-MANTTO' }), negada);
 });
 
 /* ---------------------------------------------------------------- *

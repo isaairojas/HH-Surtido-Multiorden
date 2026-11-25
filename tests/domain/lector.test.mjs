@@ -12,17 +12,11 @@ import assert from 'node:assert/strict';
 import { etiqueta, leerCodigo, limpiarLectura } from '../../src/domain/codigos.ts';
 import { interpretarLectura } from '../../src/domain/lector.ts';
 import {
-  codigosParciales,
   cambioDePedido,
-  corporativoIncompleto,
   estadoInicial,
   evaluarCantidadDetalle,
-  hayCodigosSinSurtir,
-  letraDe,
   ordenarPorFamilia,
-  pedidosConParciales,
   productosVista,
-  promocionesPendientes,
   rondaReducer,
   tareaSinAvance,
 } from '../../src/domain/ronda.ts';
@@ -68,21 +62,6 @@ test('el escaneable surte directo con la cantidad de su etiqueta', () => {
 
 /* ---- Sacar el pedido de la ronda y letras de contenedor ---- */
 
-test('sacar un pedido conserva lo surtido de los demás y las letras de sus contenedores, sin integrar otros', () => {
-  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 11);
-  s = rondaReducer(s, { type: 'retirarPedido', pedidoId: '100002' });
-  assert.deepEqual(s.ronda.pedidos.map((p) => p.id), ['100001', '100003']);
-  assert.equal(partida(s, '100001', '1394010').surtido, 11);
-  assert.deepEqual([letraDe(s.ronda, 0), letraDe(s.ronda, 1)], ['A', 'C']);
-  const cinta = productosVista(s.ronda).find((v) => v.codigo === '1394010');
-  assert.equal(cinta.solicitadoTotal, 14, 'el total ya no cuenta las 5 piezas del 100002');
-  assert.deepEqual(cinta.presencias.map((p) => p.contenedor), ['A', 'C']);
-  assert.ok(
-    productosVista(s.ronda).every((v) => v.presencias.every((p) => p.pedidoId !== '100002')),
-    'el pedido retirado no queda en ningún desglose',
-  );
-});
-
 test('cargar sustituye el estado y la tarea sin avance no trae piezas ni negaciones', () => {
   let s = surtir(estadoInicial(RONDA_PRUEBAS), '0607006', 1);
   s = rondaReducer(s, { type: 'negar', codigo: '1458000', motivo: 'Producto dañado' });
@@ -92,37 +71,6 @@ test('cargar sustituye el estado y la tarea sin avance no trae piezas ni negacio
 });
 
 /* ---- Finalizar ---- */
-
-test('finalizar detecta códigos en 0, pedidos con parciales y corporativos incompletos', () => {
-  const s = estadoInicial(RONDA_PRUEBAS);
-  assert.equal(hayCodigosSinSurtir(s.ronda), true);
-  const parcial = surtir(s, '1458000', 1);
-  assert.deepEqual(pedidosConParciales(parcial.ronda).map((x) => x.pedido.id), ['100001']);
-  const corp = { ...s, ronda: { ...s.ronda, pedidos: s.ronda.pedidos.map((p, i) => (i === 1 ? { ...p, corporativoOC: true } : p)) } };
-  assert.equal(corporativoIncompleto(corp.ronda), 1);
-});
-
-test('los parciales se listan una vez por código, con su desglose por contenedor', () => {
-  // 1458000: A 1 de 2. 2012000: B 3 de 3 y C 1 de 2.
-  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1458000', 1);
-  s = surtir(surtir(s, '2012000', 3), '2012000', 1);
-  const cod = codigosParciales(s.ronda);
-  assert.deepEqual(cod.map((v) => v.codigo).sort(), ['1458000', '2012000']);
-  const foco = cod.find((v) => v.codigo === '2012000');
-  assert.deepEqual(foco.presencias.map((p) => `${p.contenedor} ${p.surtido}/${p.solicitado}`), ['B 3/3', 'C 1/2']);
-});
-
-test('negar la promoción deja sus piezas fuera de la cuenta de parciales', () => {
-  // A: cinta completa y limpiador 6200401 negado: la promoción "Kit mantenimiento" queda incompleta en A.
-  let s = surtir(estadoInicial(RONDA_PRUEBAS), '1394010', 11);
-  s = rondaReducer(s, { type: 'negar', codigo: '6200401', motivo: 'Sin existencia' });
-  const pendiente = promocionesPendientes(s.ronda).find((p) => p.pedidos.some((x) => x.pedidoId === '100001'));
-  assert.ok(pendiente, 'la promoción de A queda pendiente');
-  s = rondaReducer(s, { type: 'negarPromocion', promocionId: pendiente.promocion.id });
-  assert.equal(partida(s, '100001', '1394010').surtido, 0);
-  assert.notEqual(partida(s, '100001', '1394010').motivoNegacion, null);
-  assert.ok(!codigosParciales(s.ronda).some((v) => v.presencias.some((p) => p.pedidoId === '100001' && p.estado === 'parcial')));
-});
 
 /* ---- Familia ---- */
 

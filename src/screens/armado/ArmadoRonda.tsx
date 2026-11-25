@@ -182,7 +182,7 @@ export function ArmadoRonda({ presetId }: { presetId?: string }) {
             <p>{preset.esperado}</p>
           </div>
           {preset.enListado ? (
-            <span className={`${styles.veredicto} ${styles.veredictoListado}`}>↗ Se valida en el listado</span>
+            <span className={`${styles.veredicto} ${styles.veredictoListado}`}>↗ Se valida al finalizar el surtido</span>
           ) : fallas.length === 0 ? (
             <span className={`${styles.veredicto} ${styles.veredictoOk}`}>✓ El simulador coincide con el spec</span>
           ) : (

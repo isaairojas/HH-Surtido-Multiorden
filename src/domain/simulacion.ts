@@ -59,7 +59,8 @@ export type Simulacion = {
   /** La tarea llega sin productos. */
   sinProductos: boolean;
   /**
-   * Pedidos cancelados mientras se surte. El listado no se entera hasta finalizar ("Pedido cancelado").
+   * Pedidos cancelados mientras se surte. El listado no se entera: se avisa al finalizar, en la demo de revisión
+   * multipedido.
    * SDD 2026-11-05-multipedido-surtido-listado-cierre · Pedido cancelado durante el surtido.
    */
   cancelados: string[];
@@ -79,26 +80,8 @@ export type Simulacion = {
   pedidoSinDatos: string | null;
   /** Pedido cuya desvinculación no responde al salir ('*' = el servicio entero no responde). */
   fallaDesvincular: string | null;
-  /** Pedido cuyo registro (`FillOrderFull`) falla al finalizar. */
-  fallaGuardado: string | null;
-  /** Si la falla del guardado es de red o del servidor. */
-  tipoFallaGuardado: 'red' | 'servidor';
-  /** Cuántas veces falla ese guardado antes de pasar (1 = el primer reintento ya pasa). */
-  vecesFallaGuardado: number;
-  /** Falla el cierre de la ronda (todos los pedidos ya registrados) la primera vez, por la red. */
-  fallaCierreRonda: boolean;
-  /** Falla la comprobación de cancelados al intentar finalizar (alerta de error de la app). */
-  fallaComprobacionCancelados: boolean;
-  /** Otro usuario ya concluyó la ronda en otra HH. */
-  concluidaPorOtro: boolean;
-  /** Otro usuario concluye la ronda justo antes de registrar este pedido (los anteriores ya se registraron). */
-  concluidaAntesDe: string | null;
   /** El registro de la negación falla en este pedido ('*' = el servicio entero): no se niega ninguno. */
   fallaNegar: string | null;
-  /** El registro de "Eliminar productos" de la promoción falla en este pedido: la promoción no se niega en ninguno. */
-  fallaEliminarPromocion: string | null;
-  /** Al sacar un corporativo falla el retiro (`RemoveFromRound`) o el registro del retiro. */
-  fallaRetiro: 'retiro' | 'registro' | null;
 };
 
 /**
@@ -129,20 +112,11 @@ export const SIMULACION_INICIAL: Simulacion = {
   fallaConsultaRonda: null,
   pedidoSinDatos: null,
   fallaDesvincular: null,
-  fallaGuardado: null,
-  tipoFallaGuardado: 'red',
-  vecesFallaGuardado: 1,
-  fallaCierreRonda: false,
-  fallaComprobacionCancelados: false,
-  concluidaPorOtro: false,
-  concluidaAntesDe: null,
   fallaNegar: null,
-  fallaEliminarPromocion: null,
-  fallaRetiro: null,
 };
 
 /**
- * Fallas de una sola vez del servidor simulado (negar, retirar…): la primera vez fallan y el reintento ya responde,
+ * Fallas de una sola vez del servidor simulado (negar…): la primera vez fallan y el reintento ya responde,
  * para que QA vea el "puede reintentar" de la spec. Vive fuera de React porque el detalle se desmonta al regresar;
  * recargar la página (o "Reiniciar" el caso) lo vacía.
  */

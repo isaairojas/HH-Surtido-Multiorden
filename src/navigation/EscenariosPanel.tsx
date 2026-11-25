@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/AppStore';
 import { letraDe } from '../domain/ronda';
 import { CAMBIOS, CASOS, carpetaDe, casoPorId, urlCaso, type Caso, type CambioId } from './catalogo';
+import { DEMO_REVISION_URL } from './demos';
 import styles from './EscenariosPanel.module.css';
 
 const SCROLL_KEY = 'escenarios-panel-scroll';
@@ -130,7 +131,12 @@ export function EscenariosPanel() {
           <h2 className={styles.title}>Surtido multipedido V2</h2>
           <p className={styles.subtitle}>
             {CASOS.length} escenarios de los specs de surtido. Elige uno: la HH se abre con su estado y la explicación
-            del escenario aparece a un lado.
+            del escenario aparece a un lado. La finalización del surtido, la revisión, la facturación y el embarque
+            están en la{' '}
+            <a href={DEMO_REVISION_URL} target="_blank" rel="noreferrer">
+              demo de revisión multipedido
+            </a>
+            .
           </p>
           {activo && !explicando && (
             <button type="button" className={styles.verExplicacion} onClick={() => setExplicando(true)}>

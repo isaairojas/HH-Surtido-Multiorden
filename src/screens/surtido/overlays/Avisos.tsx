@@ -1,6 +1,6 @@
 /**
- * Avisos de la demo que ya existen hoy en el listado V2 (textos de `es.ts`) o que el multipedido V2 les añade:
- * finalizar, parciales, códigos sin surtir, pedido corporativo, salir, fallas del servidor. Mismo patrón de
+ * Avisos de la demo que ya existen hoy en el listado V2 (textos de `es.ts`) o que el multipedido V2 les añade: salir,
+ * error de carga y etiqueta inválida. Los avisos al finalizar están en la demo de revisión multipedido. Mismo patrón de
  * los demás modales del sistema (ModalSheet con ícono, título, divisor y botones con texto).
  *
  * Los textos de hoy traen negritas con `**…**`, como en `es.ts`; `ConNegritas` las respeta.
@@ -24,12 +24,6 @@ export function ConNegritas({ texto }: { texto: string }) {
  * `label` queda para lectores de pantalla.
  */
 export type BotonAviso = { label: string; variante?: ButtonVariant; icono?: 'cross' | 'check'; onClick: () => void };
-
-/** ✕ (cerrar sin hacer nada) y ✓ (confirmar), el par de botones de los avisos de confirmación del V2. */
-export const botonesConfirmar = (onCancelar: () => void, onConfirmar: () => void): BotonAviso[] => [
-  { label: 'Cancelar', variante: 'error', icono: 'cross', onClick: onCancelar },
-  { label: 'Aceptar', variante: 'success', icono: 'check', onClick: onConfirmar },
-];
 
 const ICONOS = {
   pregunta: iconoPregunta,
@@ -76,24 +70,10 @@ export function TextoAviso({ children }: { children: ReactNode }) {
   return <p className={styles.text}>{children}</p>;
 }
 
-/** Bloque gris con filas etiqueta / valor (patrón de "Selección de motivo negado"). */
-export function DatosAviso({ filas }: { filas: { etiqueta: string; valor: ReactNode }[] }) {
-  return (
-    <div className={styles.datos}>
-      {filas.map((f) => (
-        <div key={f.etiqueta} className={styles.datoFila}>
-          <b>{f.etiqueta}</b>
-          <span className={styles.datoValor}>{f.valor}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * Menú ⋮ del listado, como en el V2: "Repetir audio" (vuelve a leer el resumen, SDD
- * 2026-11-05-multipedido-surtido-listado-cierre · Guía por voz en el listado) y "Finalizar surtido" (finalizar de
- * forma manual, · Bloqueos y fallas al finalizar).
+ * 2026-11-05-multipedido-surtido-listado-cierre · Guía por voz en el listado) y "Finalizar surtido" (en esta demo
+ * avisa que la finalización está en la demo de revisión multipedido).
  */
 export function MenuListado({
   onFinalizar,

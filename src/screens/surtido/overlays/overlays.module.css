@@ -252,79 +252,6 @@
   align-items: center;
 }
 
-/* ---- Promoción incompleta (PromotionProductList del V2, agrupado por pedido) ---- */
-.promoTitulo {
-  width: 100%;
-  color: var(--color-negro);
-  font: var(--font-s2-subtitle);
-  font-weight: 700;
-  line-height: normal;
-}
-
-.promoTitulo span {
-  font-weight: 400;
-}
-
-.promoPedidos {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.promoPedido {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: var(--color-inactive);
-}
-
-.promoPedidoHead {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--color-negro);
-  font: var(--font-b1-body);
-  line-height: normal;
-}
-
-.promoPedidoHead b {
-  font-weight: 700;
-}
-
-.promoFila {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--color-negro);
-  font: var(--font-b3-body);
-  line-height: normal;
-}
-
-.promoFila b {
-  font-weight: 700;
-}
-
-.promoPiezas {
-  font: var(--font-b2-body);
-  font-weight: 700;
-}
-
-.promoVacio {
-  color: var(--color-inactive-text);
-  font: var(--font-b1-body);
-  line-height: normal;
-}
-
-.promoLector {
-  display: flex;
-  width: 100%;
-}
-
 /* ---- Menú ⋮ del listado (Finalizar surtido / Repetir audio), como el del V2 ---- */
 .menuFondo {
   position: absolute;
@@ -358,18 +285,6 @@
 .menuOpcion:active,
 .menuOpcion:focus-visible {
   background: var(--color-primary-azul-0);
-}
-
-/* Parciales al finalizar: las mismas filas del listado (imagen, código, avance y desglose), con scroll como el
-   `PartialProductList` del V2 (más de 5 elementos). */
-.listaParciales {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-height: 300px;
-  overflow-y: auto;
-  border-radius: 8px;
-  border: 1px solid var(--color-inactive);
 }
 
 /* Lista de pedidos dentro de un aviso (desvinculación) */
